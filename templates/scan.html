@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scan a book</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1rem; }
+      video { width: 100%; background: #000; border-radius: 8px; aspect-ratio: 3 / 4; object-fit: cover; }
+      button { font-size: 1rem; padding: 0.6rem 1.2rem; margin: 0.5rem 0.5rem 0.5rem 0; }
+      #status { color: #555; min-height: 1.4em; }
+      #result { margin-top: 1rem; display: flex; gap: 1rem; }
+      #result img { max-height: 160px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Scan a book</h1>
+
+    <!-- iOS only turns the camera on after a user gesture, so we start on a tap. -->
+    <button id="start">Start camera</button>
+    <button id="stop" disabled>Stop</button>
+
+    <video id="video" playsinline muted></video>
+    <p id="status">Idle.</p>
+
+    <section id="result"></section>
+
+    <script type="module" src="{{ url_for('static', filename='scan.js') }}"></script>
+  </body>
+</html>
