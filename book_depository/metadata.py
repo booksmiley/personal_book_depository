@@ -7,20 +7,25 @@ is the point: if an API changes or you add a third source, only this file change
 """
 
 from dataclasses import asdict, dataclass
+from enum import Enum
 
 import requests
 
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
 COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
+OPEN_LIBRARY_AUTHORS_URL = "https://openlibrary.org{key}.json"
 
 TIMEOUT = 6  # seconds — never let a slow API hang the request
 
 
+class ApiSource(Enum):
+    google="GOOGLE"
+    open_lib="OPEN_LIB"
+
+
 @dataclass
 class Book:
-    """The normalized shape the rest of the app stores in the `books` table."""
-
     isbn: str
     title: str
     author: str = ""
@@ -34,13 +39,6 @@ class Book:
 
 
 def fetch_book_metadata(isbn: str) -> Book | None:
-    """Try Open Library first, fall back to Google Books. Return a Book or None.
-
-    This orchestration is done for you — note the pattern: each source is a
-    function returning `Book | None`, and we take the first that succeeds. A
-    network error from one source shouldn't kill the whole lookup, so we swallow
-    `RequestException` and move on.
-    """
     for source in (_from_open_library, _from_google_books):
         try:
             book = source(isbn)
@@ -51,44 +49,49 @@ def fetch_book_metadata(isbn: str) -> Book | None:
     return None
 
 
-def _from_open_library(isbn: str) -> Book | None:
-    """TODO (your exercise): fetch + parse Open Library into a Book.
+def resolve_open_lib_authors(authors_refs: str):
+    authors = []
+    for ref in authors_refs:
+        ref_key = ref["key"]
+        resp = requests.get(OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key), timeout=TIMEOUT)
+        authors.append(resp.json().get("name", ""))
+    return ", ".join(authors)
 
-    Steps:
-      1. resp = requests.get(OPEN_LIBRARY_URL.format(isbn=isbn), timeout=TIMEOUT)
-      2. if resp.status_code == 404: return None
-      3. data = resp.json()
-      4. build and return Book(isbn=isbn, title=data["title"], source="openlibrary", ...)
-         - cover_url:  COVER_URL.format(isbn=isbn)
-         - publisher:  data.get("publishers", [""])[0]
-         - year:       data.get("publish_date", "")
-         - GOTCHA — author: data["authors"] is a list of REFERENCES like
-           [{"key": "/authors/OL12345A"}], not names. To get the name you must do a
-           SECOND request to  https://openlibrary.org{key}.json  and read its "name".
-           (Tip: skip this on your first pass — leave author="" and get the round trip
-           working, then come back and resolve the author.)
-    """
-    raise NotImplementedError("write _from_open_library")
+
+def _from_open_library(isbn: str) -> Book | None:
+    resp = requests.get(OPEN_LIBRARY_URL.format(isbn=isbn), timeout=TIMEOUT)
+    if resp.status_code == 404:
+        return None
+    data = resp.json()
+    authors = resolve_open_lib_authors(authors_refs=data.get('authors', []))
+    return Book(
+        isbn=isbn,  # thread in the arg — it isn't in the response body
+        title=data.get("title", ""),
+        author=authors,
+        cover_url=COVER_URL.format(isbn=isbn),
+        publisher=data.get("publishers", [""])[0],  # OL: list, not a string
+        year=data.get("publish_date", ""),          # OL: publish_date, not publishedDate
+        source=ApiSource.open_lib.value,
+    )
 
 
 def _from_google_books(isbn: str) -> Book | None:
-    """TODO (your exercise): fetch + parse Google Books into a Book.
-
-    Steps:
-      1. resp = requests.get(GOOGLE_BOOKS_URL.format(isbn=isbn), timeout=TIMEOUT)
-      2. data = resp.json()
-      3. items = data.get("items"); if not items: return None
-      4. info = items[0]["volumeInfo"]; build Book(..., source="googlebooks")
-         - title:      info.get("title", "")
-         - author:     ", ".join(info.get("authors", []))   # already plain names here
-         - publisher:  info.get("publisher", "")
-         - year:       info.get("publishedDate", "")
-         - cover_url:  info.get("imageLinks", {}).get("thumbnail", "")
-    """
-    raise NotImplementedError("write _from_google_books")
+    resp = requests.get(GOOGLE_BOOKS_URL.format(isbn=isbn), timeout=TIMEOUT)
+    data = resp.json()
+    items = data.get("items")
+    if not items:
+        return None
+    info = items[0]["volumeInfo"]
+    return Book(
+        isbn=isbn,  # thread in the arg — volumeInfo has no isbn field
+        title=info.get("title", ""),
+        author=", ".join(info.get("authors", [])),  # Google: plain name strings
+        cover_url=info.get("imageLinks", {}).get("thumbnail", ""),
+        publisher=info.get("publisher", ""),
+        year=info.get("publishedDate", ""),
+        source=ApiSource.google.value,
+    )
 
 
 if __name__ == "__main__":
-    # Quick manual check once you've implemented a parser:
-    #   python -m book_depository.metadata
     print(fetch_book_metadata("9780131103627"))
