@@ -6,7 +6,8 @@
     <title>Scan a book</title>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1rem; }
-      video { width: 100%; background: #000; border-radius: 8px; aspect-ratio: 3 / 4; object-fit: cover; }
+      /* Short + wide to match an EAN-13 barcode's shape. */
+      video { width: 100%; background: #000; border-radius: 8px; aspect-ratio: 16 / 9; object-fit: cover; }
       button { font-size: 1rem; padding: 0.6rem 1.2rem; margin: 0.5rem 0.5rem 0.5rem 0; }
       #status { color: #555; min-height: 1.4em; }
       #result { margin-top: 1rem; display: flex; gap: 1rem; }

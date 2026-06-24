@@ -1,7 +1,7 @@
 # Personal Book Depository
 
-A lean church-library system. This repo currently scaffolds **one slice**:
-*scan a barcode → ISBN → fetch book metadata*. See `church-library-brief.md` for the
+A lean open source library system. This repo currently scaffolds **one slice**:
+*scan a barcode → ISBN → fetch book metadata*. See `personal-library-brief.md` for the
 full design.
 
 ## Architecture of this slice

@@ -6,17 +6,20 @@ return, the DB) depends only on `Book`, never on the raw API JSON. That decoupli
 is the point: if an API changes or you add a third source, only this file changes.
 """
 
+import logging
 from dataclasses import asdict, dataclass
 from enum import Enum
 
 import requests
+
+log = logging.getLogger(__name__)
 
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
 COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
 OPEN_LIBRARY_AUTHORS_URL = "https://openlibrary.org{key}.json"
 
-TIMEOUT = 6  # seconds — never let a slow API hang the request
+TIMEOUT = 10  # seconds — never let a slow API hang the request
 
 
 class ApiSource(Enum):
@@ -42,30 +45,42 @@ def fetch_book_metadata(isbn: str) -> Book | None:
     for source in (_from_open_library, _from_google_books):
         try:
             book = source(isbn)
-        except requests.RequestException:
+        except requests.RequestException as err:
+            log.warning("%s failed for %s: %s", source.__name__, isbn, err)
             book = None
         if book is not None:
+            log.info("metadata for %s resolved via %s", isbn, book.source)
             return book
+    log.warning("no metadata found for %s (all sources exhausted)", isbn)
     return None
 
 
-def resolve_open_lib_authors(authors_refs: str):
+def resolve_open_lib_authors(authors_refs: list) -> str:
     authors = []
     for ref in authors_refs:
         ref_key = ref["key"]
         resp = requests.get(
             OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key), timeout=TIMEOUT
         )
+        log.debug("author lookup %s -> HTTP %s", ref_key, resp.status_code)
         authors.append(resp.json().get("name", ""))
     return ", ".join(authors)
 
 
 def _from_open_library(isbn: str) -> Book | None:
     resp = requests.get(OPEN_LIBRARY_URL.format(isbn=isbn), timeout=TIMEOUT)
+    log.debug("open library %s -> HTTP %s", isbn, resp.status_code)
     if resp.status_code == 404:
         return None
     data = resp.json()
-    authors = resolve_open_lib_authors(authors_refs=data.get("authors", []))
+    # Author resolution is an extra network call (one per author). It's a
+    # nice-to-have, so a failure here must NOT sink the whole book — degrade to
+    # an empty author instead of letting the exception bubble up and null the result.
+    try:
+        authors = resolve_open_lib_authors(authors_refs=data.get("authors", []))
+    except requests.RequestException as err:
+        log.warning("author resolution failed for %s: %s", isbn, err)
+        authors = ""
     return Book(
         isbn=isbn,  # thread in the arg — it isn't in the response body
         title=data.get("title", ""),
@@ -97,3 +112,4 @@ def _from_google_books(isbn: str) -> Book | None:
 
 if __name__ == "__main__":
     print(fetch_book_metadata("9780131103627"))
+    print(fetch_book_metadata("9780801020865"))
