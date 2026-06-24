@@ -20,8 +20,8 @@ TIMEOUT = 6  # seconds — never let a slow API hang the request
 
 
 class ApiSource(Enum):
-    google="GOOGLE"
-    open_lib="OPEN_LIB"
+    google = "GOOGLE"
+    open_lib = "OPEN_LIB"
 
 
 @dataclass
@@ -53,7 +53,9 @@ def resolve_open_lib_authors(authors_refs: str):
     authors = []
     for ref in authors_refs:
         ref_key = ref["key"]
-        resp = requests.get(OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key), timeout=TIMEOUT)
+        resp = requests.get(
+            OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key), timeout=TIMEOUT
+        )
         authors.append(resp.json().get("name", ""))
     return ", ".join(authors)
 
@@ -63,14 +65,14 @@ def _from_open_library(isbn: str) -> Book | None:
     if resp.status_code == 404:
         return None
     data = resp.json()
-    authors = resolve_open_lib_authors(authors_refs=data.get('authors', []))
+    authors = resolve_open_lib_authors(authors_refs=data.get("authors", []))
     return Book(
         isbn=isbn,  # thread in the arg — it isn't in the response body
         title=data.get("title", ""),
         author=authors,
         cover_url=COVER_URL.format(isbn=isbn),
         publisher=data.get("publishers", [""])[0],  # OL: list, not a string
-        year=data.get("publish_date", ""),          # OL: publish_date, not publishedDate
+        year=data.get("publish_date", ""),  # OL: publish_date, not publishedDate
         source=ApiSource.open_lib.value,
     )
 

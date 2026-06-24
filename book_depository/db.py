@@ -45,26 +45,39 @@ CREATE TABLE IF NOT EXISTS status (
 """
 
 
+BOOK_QUERY_BY_ISBN = "SELECT * FROM books WHERE isbn = ?"
+BOOK_INSERT = "INSERT INTO books (isbn, title, author, cover_url, publisher, year) VALUES (?, ?, ?, ?, ?, ?)"
+BOOK_UPDATE_COPY = (
+    "UPDATE books SET total_count = total_count + 1, available = available + 1 "
+    "WHERE isbn = ?"
+)
+
+
 def get_db(owner: str) -> sqlite3.Connection:
-    """Open (creating if needed) the SQLite file for one owner."""
     DATA_DIR.mkdir(exist_ok=True)
     conn = sqlite3.connect(DATA_DIR / f"{owner}.sqlite")
-    conn.row_factory = sqlite3.Row          # rows behave like dicts
+    conn.row_factory = sqlite3.Row  # rows behave like dicts
     conn.execute("PRAGMA foreign_keys = ON")  # sqlite needs this per-connection
-    conn.executescript(SCHEMA)              # idempotent — safe to run every open
+    conn.executescript(SCHEMA)  # idempotent — safe to run every open
     return conn
 
 
-# --- Your exercises (the register/borrow/return flows write through these) ---
-
 def find_book_by_isbn(conn: sqlite3.Connection, isbn: str):
-    """TODO: SELECT * FROM books WHERE isbn = ?  -> return the row or None."""
-    raise NotImplementedError
+    cur = conn.execute(BOOK_QUERY_BY_ISBN, (isbn,))
+    row = cur.fetchone()
+    return row
 
-def add_book(conn, book) -> int:
-    """TODO: INSERT a new books row from a metadata.Book (total_count/available = 1).
 
-    The register flow first checks find_book_by_isbn: if it exists, show the
-    "already registered — add a copy?" alert and increment counts instead of inserting.
-    """
-    raise NotImplementedError
+def add_book(conn: sqlite3.Connection, book) -> int:
+    cur = conn.execute(
+        BOOK_INSERT,
+        (book.isbn, book.title, book.author, book.cover_url, book.publisher, book.year),
+    )
+    conn.commit()
+    return cur.lastrowid
+
+
+def add_copy(conn: sqlite3.Connection, isbn: str) -> int:
+    cur = conn.execute(BOOK_UPDATE_COPY, (isbn,))
+    conn.commit()
+    return cur.rowcount

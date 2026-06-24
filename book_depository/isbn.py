@@ -17,7 +17,7 @@ def isbn_check_sum(isbn: str):
     s = 0
     for idx, d in enumerate(isbn):
         d = int(d)
-        s += (d * 1 if idx % 2 == 0 else d * 3)
+        s += d * 1 if idx % 2 == 0 else d * 3
     return s % 10 == 0
 
 
@@ -32,7 +32,7 @@ def is_valid_isbn13(isbn: str) -> bool:
     if not bool(re.fullmatch(r"\d{13}", isbn or "")):
         return False
 
-    if isbn[:3] not in ('978', '979'):
+    if isbn[:3] not in ("978", "979"):
         return False
 
     if not isbn_check_sum(isbn):
