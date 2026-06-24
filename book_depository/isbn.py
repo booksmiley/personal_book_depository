@@ -13,27 +13,38 @@ def normalize_isbn(raw: str) -> str:
     return re.sub(r"[^0-9]", "", raw or "")
 
 
+def isbn_check_sum(isbn: str):
+    s = 0
+    for idx, d in enumerate(isbn):
+        d = int(d)
+        s += (d * 1 if idx % 2 == 0 else d * 3)
+    return s % 10 == 0
+
+
 def is_valid_isbn13(isbn: str) -> bool:
     """Return True only for a well-formed book ISBN-13.
-
-    NOTE: This is a placeholder so the pipeline runs end-to-end right now.
-    It only checks "13 digits" — which lets misreads through.
-
-    TODO (your exercise): make it a real check —
-      1. exactly 13 digits                          -> re.fullmatch(r"\\d{13}", isbn)
-      2. book prefix: starts with "978" or "979"
-      3. checksum: multiply digits by alternating weights 1,3,1,3,...,1
-         and the total must be divisible by 10.
-         e.g. for digits d0..d12:  sum(d[i] * (1 if i % 2 == 0 else 3)) % 10 == 0
-    Then write a couple of asserts at the bottom (real ISBN passes, tweaked one fails)
-    and run `python -m book_depository.isbn` to check yourself.
+    1. exactly 13 digits                          -> re.fullmatch(r"\\d{13}", isbn)
+    2. book prefix: starts with "978" or "979"
+    3. checksum: multiply digits by alternating weights 1,3,1,3,...,1
+       and the total must be divisible by 10.
+       e.g. for digits d0..d12:  sum(d[i] * (1 if i % 2 == 0 else 3)) % 10 == 0
     """
-    return bool(re.fullmatch(r"\d{13}", isbn or ""))
+    if not bool(re.fullmatch(r"\d{13}", isbn or "")):
+        return False
+
+    if isbn[:3] not in ('978', '979'):
+        return False
+
+    if not isbn_check_sum(isbn):
+        return False
+
+    return True
 
 
 if __name__ == "__main__":
-    # Scratch space for self-testing while you implement the checksum.
-    # TODO: add assertions, e.g.
-    #   assert is_valid_isbn13("9780131103627")      # real ISBN -> True
-    #   assert not is_valid_isbn13("9780131103628")  # bad checksum -> False
-    print("isbn.py loaded — add your assertions here.")
+    assert is_valid_isbn13("9780131103627")  # real ISBN -> expect True
+    assert not is_valid_isbn13("9780131103628")  # bad check digit -> expect False
+    assert not is_valid_isbn13("1234567890123")  # bad prefix -> expect False
+    assert not is_valid_isbn13("978013110362")  # only 12 digits -> expect False
+    assert not is_valid_isbn13("978013110362X")  # has a letter -> expect False
+    print("All ISBN checks passed ✅")
