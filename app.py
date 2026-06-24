@@ -6,7 +6,7 @@ from flask import Flask, abort, jsonify, render_template, request
 
 from book_depository.db import add_book, add_copy, find_book_by_isbn, get_db
 from book_depository.isbn import is_valid_isbn13, normalize_isbn
-from book_depository.metadata import fetch_book_metadata
+from book_depository.metadata import Book, fetch_book_metadata
 
 # Show timestamped logs in the console. INFO for everything, DEBUG for our own
 # package so per-call HTTP statuses (book + author lookups) show up while testing.
@@ -68,7 +68,24 @@ def register(raw_isbn: str):
     try:
         existing = find_book_by_isbn(conn, isbn)
         if not existing:
-            meta = fetch_book_metadata(isbn)  # the ONLY network call
+            posted = request.get_json(silent=True)
+            if posted:
+                meta = Book(
+                    **{
+                        k: posted.get(k, "")
+                        for k in (
+                            "isbn",
+                            "title",
+                            "author",
+                            "cover_url",
+                            "publisher",
+                            "year",
+                            "source",
+                        )
+                    }
+                )
+            else:
+                meta = fetch_book_metadata(isbn)
             if meta is None:
                 abort(404, "no book is found online")
             add_book(conn, meta)
