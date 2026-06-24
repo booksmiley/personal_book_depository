@@ -8,10 +8,14 @@ entirely, and it's all own-able code — ideal for practice. On a real deploy th
 needs to sit on a PERSISTENT disk/volume or it gets wiped on redeploy.
 """
 
+import os
 import sqlite3
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+# Where the per-owner SQLite files live. Defaults to ./data inside the repo (git
+# -ignored), but BOOK_DATA_DIR overrides it so local runs can keep personal library
+# data in a safe location outside the project. run_local.py sets this from config.yml.
+DATA_DIR = Path(os.environ.get("BOOK_DATA_DIR") or Path(__file__).resolve().parent.parent / "data")
 
 # One source of truth for the schema. Open question from the brief: store `available`
 # or derive it from the ledger. This scaffold STORES it (simplest); revisit later.
