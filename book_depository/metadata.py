@@ -7,15 +7,16 @@ is the point: if an API changes or you add a third source, only this file change
 """
 
 import logging
+import os
 from dataclasses import asdict, dataclass
 from enum import Enum
 
 import requests
 
 log = logging.getLogger(__name__)
-
+GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
-GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes?q=isbn:{isbn}"
+GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
 OPEN_LIBRARY_AUTHORS_URL = "https://openlibrary.org{key}.json"
 
@@ -42,7 +43,7 @@ class Book:
 
 
 def fetch_book_metadata(isbn: str) -> Book | None:
-    for source in (_from_open_library, _from_google_books):
+    for source in (_from_google_books, _from_open_library):
         try:
             book = source(isbn)
         except requests.RequestException as err:
@@ -93,7 +94,10 @@ def _from_open_library(isbn: str) -> Book | None:
 
 
 def _from_google_books(isbn: str) -> Book | None:
-    resp = requests.get(GOOGLE_BOOKS_URL.format(isbn=isbn), timeout=TIMEOUT)
+    params = {"q": f"isbn:{isbn}"}
+    if GOOGLE_BOOKS_API_KEY:
+        params["key"] = GOOGLE_BOOKS_API_KEY
+    resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
     data = resp.json()
     items = data.get("items")
     if not items:

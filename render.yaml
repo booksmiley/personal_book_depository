@@ -1,0 +1,24 @@
+# Render Blueprint — defines the web service so the deploy is reproducible.
+# In Render: New + → Blueprint → pick this repo, and it reads this file.
+services:
+  - type: web
+    name: personal-book-depository
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # gunicorn is the production server; it imports `app` from app.py (the Flask
+    # instance) and binds to the port Render injects via $PORT.
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      # Set the actual key in the Render dashboard — `sync: false` keeps the
+      # secret OUT of the repo (Render will prompt you for the value).
+      - key: GOOGLE_BOOKS_API_KEY
+        sync: false
+
+    # NOTE on data persistence: the free plan's filesystem is EPHEMERAL — the
+    # SQLite files in data/ are wiped on every redeploy/restart. That's fine for
+    # testing the phone-camera path now. For durable data, add a paid disk:
+    #   disk:
+    #     name: data
+    #     mountPath: /opt/render/project/src/data
+    #     sizeGB: 1

@@ -5,3 +5,4 @@ data/
 .idea/
 /venv/
 .claude
+/local_config
