@@ -150,6 +150,11 @@ def close_loan(conn: sqlite3.Connection, loan_id: int):
     return available
 
 
+def get_all_books(conn: sqlite3.Connection):
+    cur = conn.execute("SELECT * FROM books ORDER BY title")
+    return cur.fetchall()
+
+
 def backup_db(conn: sqlite3.Connection, backup_path: str):
     if not backup_path:
         return

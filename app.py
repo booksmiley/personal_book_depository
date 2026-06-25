@@ -12,6 +12,7 @@ from book_depository.db import (
     borrow_book,
     close_loan,
     find_book_by_isbn,
+    get_all_books,
     get_db,
     open_loans,
 )
@@ -185,6 +186,16 @@ def return_book_route(raw_isbn: str):
         conn.close()
 
     return jsonify(status="returned", book=dict(fresh))
+
+
+@app.get("/api/books")
+def list_books():
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        books = get_all_books(conn)
+    finally:
+        conn.close()
+    return jsonify(books=[dict(b) for b in books])
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ const startBtn = document.getElementById("start");
 const stopBtn = document.getElementById("stop");
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
+const cameraUi = document.getElementById("camera-ui");
+const collectionEl = document.getElementById("collection");
+const collectionCountEl = document.getElementById("collection-count");
+const collectionBodyEl = document.getElementById("collection-body");
 
 const detector = new BarcodeDetector({ formats: ["ean_13"] });
 
@@ -33,7 +37,7 @@ function setStatus(msg) {
   statusEl.textContent = msg;
 }
 
-// Which action the current scan should perform: "register" | "borrow" | "return".
+// Which action the current scan should perform: "register" | "borrow" | "return" | "collection".
 function currentMode() {
   return document.querySelector('input[name="mode"]:checked').value;
 }
@@ -108,7 +112,7 @@ async function scanLoop() {
 }
 
 // Route a confirmed scan by mode. Returns true if a card is shown (pause), false
-// to keep scanning (so a miss/“not in library” is retryable).
+// to keep scanning (so a miss/"not in library" is retryable).
 async function handleScan(isbn) {
   const mode = currentMode();
   if (mode === "register") return lookupForRegister(isbn);
@@ -229,6 +233,64 @@ function renderReturnCard(book, openLoans) {
   actions.querySelector("#next").addEventListener("click", () => resumeScanning());
 }
 
+// --- Collection: cover grid of all registered books ---
+async function loadCollection() {
+  collectionCountEl.textContent = "";
+  collectionBodyEl.innerHTML = "<p>Loading…</p>";
+  try {
+    const { books } = await getJson("/api/books");
+    renderCollection(books);
+  } catch (err) {
+    collectionBodyEl.innerHTML = `<p style="color:#c00">${esc(err.message)}</p>`;
+  }
+}
+
+function renderCollection(books) {
+  collectionCountEl.textContent =
+    books.length === 0 ? "" : `${books.length} book${books.length === 1 ? "" : "s"}`;
+
+  if (books.length === 0) {
+    collectionBodyEl.innerHTML = "<p>No books registered yet.</p>";
+    return;
+  }
+
+  const cards = books
+    .map((book) => {
+      const cover = book.cover_url
+        ? `<img src="${esc(book.cover_url)}" alt="cover" />`
+        : `<div class="no-cover">${esc(book.title || "")}</div>`;
+      const avail = book.available ?? 0;
+      const total = book.total_count ?? 1;
+      const badgeClass = avail > 0 ? "badge-ok" : "badge-out";
+      const badgeLabel = avail > 0 ? `${avail} / ${total} available` : "All out";
+      return `
+        <div class="book-card">
+          ${cover}
+          <div class="info">
+            <strong>${esc(book.title || "(no title)")}</strong>
+            <span class="author">${esc(book.author || "")}</span>
+            <span class="badge ${badgeClass}">${badgeLabel}</span>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  collectionBodyEl.innerHTML = `<div class="book-grid">${cards}</div>`;
+}
+
+// --- Mode switching ---
+document.querySelectorAll('input[name="mode"]').forEach((radio) => {
+  radio.addEventListener("change", () => {
+    const isCollection = currentMode() === "collection";
+    cameraUi.hidden = isCollection;
+    collectionEl.hidden = !isCollection;
+    if (isCollection) {
+      if (scanning) stopCamera();
+      loadCollection();
+    }
+  });
+});
+
 // POST helper: send JSON (optional), return parsed JSON or throw with the message.
 async function postJson(url, body) {
   const resp = await fetch(url, {
@@ -294,3 +356,4 @@ async function returnLoan(book, loanId) {
 
 startBtn.addEventListener("click", startCamera);
 stopBtn.addEventListener("click", stopCamera);
+document.getElementById("reload-btn").addEventListener("click", loadCollection);

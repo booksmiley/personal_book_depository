@@ -6,7 +6,6 @@
     <title>Scan a book</title>
     <style>
       body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1rem; }
-      /* Short + wide to match an EAN-13 barcode's shape. */
       video { width: 100%; background: #000; border-radius: 8px; aspect-ratio: 16 / 9; object-fit: cover; }
       button { font-size: 1rem; padding: 0.6rem 1.2rem; margin: 0.5rem 0.5rem 0.5rem 0; }
       #status { color: #555; min-height: 1.4em; }
@@ -17,27 +16,55 @@
       fieldset label { margin-right: 1rem; white-space: nowrap; }
       .loan { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.2rem 0; border-top: 1px solid #eee; }
       .loan span { font-size: 0.9rem; }
+
+      /* Collection grid */
+      #collection { margin-top: 0.5rem; }
+      #collection-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+      #collection-header span { color: #555; font-size: 0.95rem; }
+      #reload-btn { font-size: 0.85rem; padding: 0.3rem 0.7rem; margin: 0; }
+      .book-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+      .book-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
+      .book-card img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; }
+      .no-cover {
+        width: 100%; aspect-ratio: 2 / 3; background: #f0ece4;
+        display: flex; align-items: center; justify-content: center;
+        color: #999; font-size: 0.75rem; text-align: center;
+        padding: 0.5rem; box-sizing: border-box;
+      }
+      .book-card .info { padding: 0.5rem; }
+      .book-card .info strong { font-size: 0.85rem; display: block; margin-bottom: 0.15rem; line-height: 1.3; }
+      .book-card .info .author { color: #666; font-size: 0.75rem; display: block; margin-bottom: 0.3rem; }
+      .badge { display: inline-block; font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 4px; }
+      .badge-ok  { background: #d4edda; color: #155724; }
+      .badge-out { background: #f8d7da; color: #721c24; }
     </style>
   </head>
   <body>
     <h1>Scan a book</h1>
 
-    <!-- What each scan should do. Pick before scanning; the card adapts to it. -->
     <fieldset id="mode">
       <legend>Mode</legend>
       <label><input type="radio" name="mode" value="register" checked /> Register</label>
       <label><input type="radio" name="mode" value="borrow" /> Borrow</label>
       <label><input type="radio" name="mode" value="return" /> Return</label>
+      <label><input type="radio" name="mode" value="collection" /> Collection</label>
     </fieldset>
 
-    <!-- iOS only turns the camera on after a user gesture, so we start on a tap. -->
-    <button id="start">Start camera</button>
-    <button id="stop" disabled>Stop</button>
+    <div id="camera-ui">
+      <button id="start">Start camera</button>
+      <button id="stop" disabled>Stop</button>
+      <video id="video" playsinline muted></video>
+      <p id="status">Idle.</p>
+      <section id="result"></section>
+    </div>
 
-    <video id="video" playsinline muted></video>
-    <p id="status">Idle.</p>
-
-    <section id="result"></section>
+    <section id="collection" hidden>
+      <div id="collection-header">
+        <span id="collection-count"></span>
+        <button id="reload-btn">↻ Reload</button>
+      </div>
+      <div id="collection-body"></div>
+    </section>
 
     <script type="module" src="{{ url_for('static', filename='scan.js') }}"></script>
   </body>

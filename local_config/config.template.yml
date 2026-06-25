@@ -1,0 +1,38 @@
+# Local runtime config for running the library on your own machine.
+#
+# SETUP:
+#   cp local_config/config.template.yml local_config/config.yml
+#   # then edit config.yml with your own values
+#
+# config.yml is git-ignored so your API key and personal paths never get committed.
+
+server:
+  # 0.0.0.0 binds on all interfaces so your phone (same WiFi) can reach this Mac.
+  host: 0.0.0.0
+  port: 8000
+
+  https:
+    # Phone cameras only work over HTTPS. Leave enabled: true.
+    enabled: true
+    # Option A (easiest): leave certfile/keyfile blank — a throwaway self-signed
+    # cert is used. Your phone shows a one-time "Not Private" warning you can tap
+    # through. Requires the `cryptography` pip package (requirements-local.txt).
+    #
+    # Option B (no warning): install mkcert (https://github.com/FiloSottile/mkcert),
+    # run `mkcert <your-lan-ip>`, then point these at the two generated files.
+    certfile: "local_config/cert.pem"
+    keyfile:  "local_config/key.pem"
+
+# Where your library data lives. Keep this OUTSIDE the repo so it is never
+# committed and survives if you delete the project. "~" expands to your home dir.
+data_dir: "~/.book_depository/data"
+
+# Where to write iCloud backup snapshots after every change. The live .sqlite
+# stays at data_dir; only finished snapshots are written here (safe for iCloud).
+# Leave blank to disable backups.
+backup_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/book_depository/"
+
+# Google Books API key — improves metadata reliability. Leave blank to rely on
+# Open Library only. Get a key at https://console.cloud.google.com (Books API).
+# Safe to paste here because this file is git-ignored.
+google_books_api_key: ""
