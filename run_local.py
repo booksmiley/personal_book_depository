@@ -35,6 +35,9 @@ def main() -> None:
     # IMPORTANT: set env BEFORE importing the app, because db.py and metadata.py
     # read these at import time.
     os.environ["BOOK_DATA_DIR"] = data_dir
+    backup_dir = os.path.expanduser(cfg.get("backup_dir", ""))
+    if backup_dir:
+        os.environ["BOOK_BACKUP_DIR"] = backup_dir
     # Accept either casing in config; the app reads the env var GOOGLE_BOOKS_API_KEY.
     api_key = cfg.get("GOOGLE_BOOKS_API_KEY") or cfg.get("google_books_api_key")
     if api_key:

@@ -28,18 +28,12 @@ Stack: Python + Flask + stdlib sqlite3 (DB-per-owner). Frontend = zero-build JS 
   - Schema: `loans(loan_id, book_id, borrower, borrowed_at, returned_at)`; `returned_at IS NULL` = still out.
   - Routes: `GET /api/book/<isbn>`, `POST /api/borrow/<isbn>`, `POST /api/return/<isbn>`
 
-## Backlog
-### Data safety: back up local SQLite to iCloud
-Keep the live DB local; write consistent snapshots into iCloud. **Do NOT put the live
-`.sqlite` in iCloud directly** — sync corrupts it (WAL/-shm sidecars, mid-write grabs,
-placeholder eviction). Safe approach:
-- Add `backup_dir` to `config.yml` (e.g.
-  `~/Library/Mobile Documents/com~apple~CloudDocs/book_depository/`; blank = off).
-- `backup_db(conn, path)` using SQLite **online backup API** (`conn.backup(dest)` →
-  consistent single-file snapshot) to a temp file, then **atomic `os.replace`** into
-  `backup_dir`. Call after each successful write. Snapshots are for restore, not live
-  multi-device editing (write from one machine only).
+- **iCloud backup**: `backup_db(conn, path)` writes a consistent SQLite snapshot via
+  `conn.backup()` + atomic `os.replace` after every write. `backup_dir` in
+  `local_config/config.yml` (blank = off); set via `BOOK_BACKUP_DIR` env var.
+  Live DB stays local — only finished snapshots land in iCloud.
 
+## Backlog
 ### Later
 - Add borrower `contact` (phone/email) once secure storage exists.
 - Render durable data: paid disk (template in `render.yaml`) or Fly volume.

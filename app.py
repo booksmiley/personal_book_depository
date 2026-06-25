@@ -5,8 +5,10 @@ import logging
 from flask import Flask, abort, jsonify, render_template, request
 
 from book_depository.db import (
+    BACKUP_DIR,
     add_book,
     add_copy,
+    backup_db,
     borrow_book,
     close_loan,
     find_book_by_isbn,
@@ -98,6 +100,7 @@ def register(raw_isbn: str):
             if meta is None:
                 abort(404, "no book is found online")
             add_book(conn, meta)
+            backup_db(conn, BACKUP_DIR)
             return jsonify(status="added", book=meta.to_dict())
 
         if not confirm:
@@ -106,6 +109,7 @@ def register(raw_isbn: str):
 
         add_copy(conn, isbn)
         fresh = find_book_by_isbn(conn, isbn)  # re-read for the updated counts
+        backup_db(conn, BACKUP_DIR)
         return jsonify(status="copy_added", book=dict(fresh))
     finally:
         conn.close()
@@ -152,6 +156,7 @@ def borrow(raw_isbn: str):
         if available is None:
             abort(409, "No copies available to borrow.")
         fresh = find_book_by_isbn(conn, isbn)
+        backup_db(conn, BACKUP_DIR)
     finally:
         conn.close()
 
@@ -175,6 +180,7 @@ def return_book_route(raw_isbn: str):
         if available is None:
             abort(409, "That loan was already returned.")
         fresh = find_book_by_isbn(conn, isbn)
+        backup_db(conn, BACKUP_DIR)
     finally:
         conn.close()
 

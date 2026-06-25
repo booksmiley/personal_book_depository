@@ -18,6 +18,7 @@ from pathlib import Path
 DATA_DIR = Path(
     os.environ.get("BOOK_DATA_DIR") or Path(__file__).resolve().parent.parent / "data"
 )
+BACKUP_DIR = os.environ.get("BOOK_BACKUP_DIR", "")
 
 # One source of truth for the schema. Open question from the brief: store `available`
 # or derive it from the ledger. This scaffold STORES it (simplest); revisit later.
@@ -147,3 +148,17 @@ def close_loan(conn: sqlite3.Connection, loan_id: int):
     available = conn.execute(QUERY_AVAILABLE_COPIES, (book_id,)).fetchone()["available"]
     conn.commit()
     return available
+
+
+def backup_db(conn: sqlite3.Connection, backup_path: str):
+    if not backup_path:
+        return
+
+    backup_dir = Path(backup_path).expanduser()
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    temp_path = backup_dir / "lib_admin_temp.sqlite"
+    final_path = backup_dir / "lib_admin.sqlite"
+    with sqlite3.connect(temp_path) as back_up_conn:
+        conn.backup(back_up_conn)
+
+    os.replace(temp_path, final_path)
