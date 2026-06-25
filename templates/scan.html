@@ -12,10 +12,23 @@
       #status { color: #555; min-height: 1.4em; }
       #result { margin-top: 1rem; display: flex; gap: 1rem; }
       #result img { max-height: 160px; border-radius: 4px; }
+      #result input { font-size: 1rem; padding: 0.4rem; margin: 0.25rem 0; display: block; width: 100%; box-sizing: border-box; }
+      fieldset { border: 1px solid #ccc; border-radius: 8px; margin: 0 0 0.5rem; padding: 0.5rem 0.8rem; }
+      fieldset label { margin-right: 1rem; white-space: nowrap; }
+      .loan { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.2rem 0; border-top: 1px solid #eee; }
+      .loan span { font-size: 0.9rem; }
     </style>
   </head>
   <body>
     <h1>Scan a book</h1>
+
+    <!-- What each scan should do. Pick before scanning; the card adapts to it. -->
+    <fieldset id="mode">
+      <legend>Mode</legend>
+      <label><input type="radio" name="mode" value="register" checked /> Register</label>
+      <label><input type="radio" name="mode" value="borrow" /> Borrow</label>
+      <label><input type="radio" name="mode" value="return" /> Return</label>
+    </fieldset>
 
     <!-- iOS only turns the camera on after a user gesture, so we start on a tap. -->
     <button id="start">Start camera</button>

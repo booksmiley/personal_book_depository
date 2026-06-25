@@ -4,7 +4,15 @@ import logging
 
 from flask import Flask, abort, jsonify, render_template, request
 
-from book_depository.db import add_book, add_copy, find_book_by_isbn, get_db
+from book_depository.db import (
+    add_book,
+    add_copy,
+    borrow_book,
+    close_loan,
+    find_book_by_isbn,
+    get_db,
+    open_loans,
+)
 from book_depository.isbn import is_valid_isbn13, normalize_isbn
 from book_depository.metadata import Book, fetch_book_metadata
 
@@ -25,6 +33,7 @@ DEFAULT_OWNER = "lib_admin"
 
 @app.errorhandler(400)
 @app.errorhandler(404)
+@app.errorhandler(409)
 def json_error(err):
     """Return errors as JSON so the scan page can show them."""
     return jsonify(error=err.description), err.code
@@ -100,6 +109,76 @@ def register(raw_isbn: str):
         return jsonify(status="copy_added", book=dict(fresh))
     finally:
         conn.close()
+
+
+@app.get("/api/book/<raw_isbn>")
+def book_lookup(raw_isbn: str):
+    """
+    DB lookup for borrow/return — NO network call (metadata was cached at register).
+    Returns the book AND its open loans (the return screen lists those to pick from).
+    """
+    isbn = normalize_isbn(raw_isbn)
+    if not is_valid_isbn13(isbn):
+        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        row = find_book_by_isbn(conn, isbn)
+        if row is None:
+            abort(404, "This book isn't in the library yet.")
+        loans = [dict(l) for l in open_loans(conn, row["book_id"])]
+    finally:
+        conn.close()
+
+    return jsonify(book=dict(row), open_loans=loans)
+
+
+@app.post("/api/borrow/<raw_isbn>")
+def borrow(raw_isbn: str):
+    """
+    Borrow a copy under a minimal borrower label. JSON body: {"borrower": ...}.
+    """
+    isbn = normalize_isbn(raw_isbn)
+    if not is_valid_isbn13(isbn):
+        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        row = find_book_by_isbn(conn, isbn)
+        if row is None:
+            abort(404, "This book isn't in the library yet.")
+        borrower = (request.get_json(silent=True) or {}).get("borrower", "").strip()
+        if not borrower:
+            abort(400, "A borrower name is required.")
+        available = borrow_book(conn, row["book_id"], borrower)
+        if available is None:
+            abort(409, "No copies available to borrow.")
+        fresh = find_book_by_isbn(conn, isbn)
+    finally:
+        conn.close()
+
+    return jsonify(status="borrowed", book=dict(fresh))
+
+
+@app.post("/api/return/<raw_isbn>")
+def return_book_route(raw_isbn: str):
+    """
+    Close a specific open loan the user picked. JSON body: {"loan_id": ...}.
+    """
+    isbn = normalize_isbn(raw_isbn)
+    if not is_valid_isbn13(isbn):
+        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        loan_id = (request.get_json(silent=True) or {}).get("loan_id")
+        if not loan_id:
+            abort(400, "Pick which loan to return.")
+        available = close_loan(conn, loan_id)
+        if available is None:
+            abort(409, "That loan was already returned.")
+        fresh = find_book_by_isbn(conn, isbn)
+    finally:
+        conn.close()
+
+    return jsonify(status="returned", book=dict(fresh))
 
 
 if __name__ == "__main__":

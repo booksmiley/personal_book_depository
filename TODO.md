@@ -1,25 +1,46 @@
-# TODO
+# Project status & TODO
 
-## Data safety: back up the local SQLite DB to iCloud
-Keep the live DB local (`~/.book_depository/data`) but write consistent snapshots
-into iCloud for off-machine safety and cross-device restore.
+_Lean personal library: scan ISBN barcode → register / borrow / return. Website-only,
+phone camera as scanner. Brief: `~/Downloads/church-library-brief.md`.
+Stack: Python + Flask + stdlib sqlite3 (DB-per-owner). Frontend = zero-build JS in
+`static/` + `templates/` (Claude owns frontend; user writes the Python)._
 
-**Do NOT put the live `.sqlite` in iCloud directly** — sync corrupts it (WAL/-shm
-sidecars synced partially, mid-write grabs, placeholder eviction).
+## Done & working
+- **Scan → ISBN → metadata**: camera + EAN-13 decode (barcode-detector polyfill),
+  ISBN-13 validation (checksum), metadata via Open Library (+ Google Books fallback,
+  now with the user's API key for stability). Author resolution is non-fatal.
+- **Register flow**: `GET /api/lookup` (online) → "Add to library" → `POST /api/register`
+  with two-step duplicate-copy confirm. Frontend sends the already-fetched book so the
+  server doesn't re-fetch from the slow API.
+- **DB layer (register)**: `find_book_by_isbn`, `add_book`, `add_copy`. `available`
+  stored in `books` (not derived).
+- **Deploy**: live on Render (gunicorn, `render.yaml`); phone tested over HTTPS.
+  Free tier = data EPHEMERAL (no disk).
+- **Local run for phone**: `run_local.py` reads `local_config/config.yml` (git-ignored),
+  serves HTTPS via an **openssl self-signed cert** (NOT the `cryptography` pkg — it fails
+  to build from Rust source here). Data dir is configurable via `BOOK_DATA_DIR`, set to
+  `~/.book_depository/data` (outside the repo, safe from git, persistent).
+- **Frontend mode selector** (Register / Borrow / Return) with pause-on-hit flow and
+  "Scan next book".
+- **Borrow / Return flow**: each borrow is an individual loan with a `borrower` label.
+  Return = explicit loan selection (scan → list open loans → tap to close). `available`
+  updated atomically with the loan in one transaction.
+  - Schema: `loans(loan_id, book_id, borrower, borrowed_at, returned_at)`; `returned_at IS NULL` = still out.
+  - Routes: `GET /api/book/<isbn>`, `POST /api/borrow/<isbn>`, `POST /api/return/<isbn>`
 
-Safe approach:
-- Add `backup_dir` to `local_config/config.yml` (e.g.
+## Backlog
+### Data safety: back up local SQLite to iCloud
+Keep the live DB local; write consistent snapshots into iCloud. **Do NOT put the live
+`.sqlite` in iCloud directly** — sync corrupts it (WAL/-shm sidecars, mid-write grabs,
+placeholder eviction). Safe approach:
+- Add `backup_dir` to `config.yml` (e.g.
   `~/Library/Mobile Documents/com~apple~CloudDocs/book_depository/`; blank = off).
-- `backup_db(conn, backup_path)` in `db.py` using the SQLite **online backup API**
-  (`conn.backup(dest)` → consistent single-file snapshot, no sidecars), written to a
-  temp file then **atomically `os.replace`** into `backup_dir` (so iCloud only ever
-  sees a complete file).
-- Call it after each successful write (register / borrow / return). Writes are rare,
-  so per-write is fine and keeps the snapshot current.
-- Snapshots are for safety/restore, not live multi-device editing — still write from
-  one machine only.
+- `backup_db(conn, path)` using SQLite **online backup API** (`conn.backup(dest)` →
+  consistent single-file snapshot) to a temp file, then **atomic `os.replace`** into
+  `backup_dir`. Call after each successful write. Snapshots are for restore, not live
+  multi-device editing (write from one machine only).
 
-## Next feature: borrow / return flows
-- Python: insert `status` ledger event, decrement/increment `available`, guard
-  `available > 0` (borrow) and `available <= total_count` (return), FIFO loan match.
-- Frontend (Claude): borrow/return UI on the scanned-book card.
+### Later
+- Add borrower `contact` (phone/email) once secure storage exists.
+- Render durable data: paid disk (template in `render.yaml`) or Fly volume.
+- Overdue tracking / "who has what" view (derivable from `loans`).

@@ -15,7 +15,9 @@ from pathlib import Path
 # Where the per-owner SQLite files live. Defaults to ./data inside the repo (git
 # -ignored), but BOOK_DATA_DIR overrides it so local runs can keep personal library
 # data in a safe location outside the project. run_local.py sets this from config.yml.
-DATA_DIR = Path(os.environ.get("BOOK_DATA_DIR") or Path(__file__).resolve().parent.parent / "data")
+DATA_DIR = Path(
+    os.environ.get("BOOK_DATA_DIR") or Path(__file__).resolve().parent.parent / "data"
+)
 
 # One source of truth for the schema. Open question from the brief: store `available`
 # or derive it from the ledger. This scaffold STORES it (simplest); revisit later.
@@ -32,19 +34,16 @@ CREATE TABLE IF NOT EXISTS books (
     available   INTEGER NOT NULL DEFAULT 1
 );
 
-CREATE TABLE IF NOT EXISTS contacts (
-    contact_id INTEGER PRIMARY KEY,
-    name       TEXT NOT NULL,
-    contact    TEXT
-);
-
-CREATE TABLE IF NOT EXISTS status (
-    event_id        INTEGER PRIMARY KEY,
-    book_id         INTEGER NOT NULL REFERENCES books(book_id),
-    act             TEXT NOT NULL CHECK (act IN ('borrow', 'return')),
-    ts              TEXT NOT NULL DEFAULT (datetime('now')),
-    borrower_id     INTEGER REFERENCES contacts(contact_id),
-    available_after INTEGER
+-- One row per borrow. `returned_at IS NULL` means the copy is still out, so a
+-- book's open loans are just its rows with a null returned_at. Minimal borrower
+-- info for now (a label); a `contact` column can be added later when we have
+-- secure storage. This replaces the old status/contacts tables.
+CREATE TABLE IF NOT EXISTS loans (
+    loan_id     INTEGER PRIMARY KEY,
+    book_id     INTEGER NOT NULL REFERENCES books(book_id),
+    borrower    TEXT NOT NULL,
+    borrowed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    returned_at TEXT
 );
 """
 
@@ -55,6 +54,10 @@ BOOK_UPDATE_COPY = (
     "UPDATE books SET total_count = total_count + 1, available = available + 1 "
     "WHERE isbn = ?"
 )
+
+QUERY_AVAILABLE_COPIES = """
+    SELECT available FROM books WHERE book_id = ?
+"""
 
 
 def get_db(owner: str) -> sqlite3.Connection:
@@ -85,3 +88,62 @@ def add_copy(conn: sqlite3.Connection, isbn: str) -> int:
     cur = conn.execute(BOOK_UPDATE_COPY, (isbn,))
     conn.commit()
     return cur.rowcount
+
+
+def open_loans(conn: sqlite3.Connection, book_id: int):
+    query_open_loan = """
+        SELECT * from loans
+        WHERE book_id = ? AND returned_at is NULL
+        ORDER BY borrowed_at
+    """
+    cur = conn.execute(query_open_loan, (book_id,))
+    return cur.fetchall()
+
+
+def borrow_book(conn: sqlite3.Connection, book_id: int, borrower: str):
+    query_borrow_one_copy_from_books = """
+        UPDATE books SET available = available - 1
+        WHERE book_id = ? AND available > 0
+    """
+    query_add_record_to_loan = """
+        INSERT INTO loans (book_id, borrower) VALUES (?, ?)
+    """
+
+    cur = conn.execute(query_borrow_one_copy_from_books, (book_id,))
+    if cur.rowcount == 0:
+        return None
+
+    conn.execute(query_add_record_to_loan, (book_id, borrower))
+
+    cur = conn.execute(QUERY_AVAILABLE_COPIES, (book_id,))
+    available = cur.fetchone()["available"]
+    conn.commit()
+
+    return available
+
+
+def close_loan(conn: sqlite3.Connection, loan_id: int):
+    query_set_return_time_in_loan = """
+        UPDATE loans SET returned_at = datetime('now')
+        WHERE loan_id = ? AND returned_at IS NULL
+    """
+
+    query_book_id_from_loan_id = """
+        SELECT book_id FROM loans WHERE loan_id = ?
+    """
+
+    query_return_copy_in_books = """
+        UPDATE books SET available = available + 1 
+        WHERE book_id = ?
+    """
+
+    cur = conn.execute(query_set_return_time_in_loan, (loan_id,))
+    if cur.rowcount == 0:
+        return None
+
+    book_id = conn.execute(query_book_id_from_loan_id, (loan_id,)).fetchone()["book_id"]
+    conn.execute(query_return_copy_in_books, (book_id,))
+
+    available = conn.execute(QUERY_AVAILABLE_COPIES, (book_id,)).fetchone()["available"]
+    conn.commit()
+    return available
