@@ -227,7 +227,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .view-btn.active { border-color: var(--sh) var(--hi) var(--hi) var(--sh); box-shadow: none; background: var(--silver); font-weight: bold; }
 
 /* Grid */
-.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; padding: 4px; }
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; padding: 4px; align-items: start; }
 
 /* List view */
 .book-list { width: 100%; border-collapse: collapse; font-family: "Courier New", monospace; font-size: 0.76rem; }
@@ -256,3 +256,31 @@ button:disabled { opacity: 0.45; cursor: default; }
 .badge { display: inline-block; font-size: 0.6rem; padding: 1px 4px; border: 1px solid var(--sh); }
 .badge-ok  { background: #00c000; color: #fff; }
 .badge-out { background: #c00000; color: #fff; }
+
+/* Collection borrow/return action */
+.book-card { cursor: pointer; }
+.book-card.col-active { border-color: var(--navy) var(--navy) var(--navy) var(--navy); }
+.book-list tbody tr { cursor: pointer; }
+.book-list tbody tr.col-active td { background: #d4d0c8; font-weight: bold; }
+.col-action-row td { background: var(--silver); padding: 0; }
+.col-action-cell {
+  padding: 6px;
+  border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh);
+  display: flex; flex-direction: column; gap: 4px;
+  min-height: 70px; margin: 2px;
+}
+.col-book-title { font-size: 0.76rem; font-weight: bold; color: var(--dk); }
+.col-btns { display: flex; gap: 3px; flex-wrap: wrap; }
+.col-borrow-btn, .col-return-btn, .col-cancel-btn, .col-confirm-btn, .col-return-one-btn {
+  font-size: 0.72rem; padding: 3px 8px; margin: 0;
+}
+.col-cancel-btn { color: var(--sh); }
+.col-form { display: flex; flex-direction: column; gap: 3px; margin-top: 2px; }
+.col-name-input {
+  font-family: "Courier New", monospace; font-size: 0.76rem;
+  padding: 2px 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh);
+  background: #fff; color: var(--dk); outline: none;
+}
+.col-loan-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 2px 0; border-top: 1px solid var(--sh); font-size: 0.72rem; }
+.col-unavail { font-size: 0.72rem; color: var(--sh); }
+.col-err { font-size: 0.72rem; color: #c00000; margin: 0; }

@@ -3,12 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Library</title>
+    <title>{{ title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='theme-' + theme + '.css') }}" />
   </head>
   <body>
     <div class="scan-wrap">
-      <h1>📚 Library</h1>
+      <h1>📚 {{ title }}</h1>
 
       <div id="mode" class="segment-control">
         <label class="segment"><input type="radio" name="mode" value="register" checked />Register</label>

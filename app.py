@@ -34,6 +34,7 @@ app = Flask(__name__)
 # that becomes per-user later (e.g. owner from the URL or a session).
 DEFAULT_OWNER = "lib_admin"
 THEME = os.environ.get("BOOK_THEME", "apple")
+TITLE = os.environ.get("BOOK_TITLE", "Library")
 _VALID_THEMES = {"apple", "win95", "terminal"}
 
 
@@ -49,7 +50,7 @@ def json_error(err):
 def index():
     """Serve the scan page (camera lives in the browser)."""
     theme = THEME if THEME in _VALID_THEMES else "apple"
-    return render_template("scan.html", theme=theme)
+    return render_template("scan.html", theme=theme, title=TITLE)
 
 
 @app.get("/api/lookup/<raw_isbn>")

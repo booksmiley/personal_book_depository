@@ -306,6 +306,9 @@ function renderGrid(books) {
     })
     .join("");
   collectionBodyEl.innerHTML = `<div class="book-grid">${cards}</div>`;
+  collectionBodyEl.querySelectorAll(".book-card").forEach((card, i) => {
+    card.addEventListener("click", () => openCollectionAction(books[i], card, "grid"));
+  });
 }
 
 function renderList(books) {
@@ -332,6 +335,120 @@ function renderList(books) {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+  collectionBodyEl.querySelectorAll("tbody tr").forEach((row, i) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      openCollectionAction(books[i], row, "list");
+    });
+  });
+}
+
+// --- Collection borrow/return action ---
+
+function closeCollectionAction() {
+  renderCollection(cachedBooks); // rebuilds cleanly; clears any active state
+}
+
+async function openCollectionAction(book, el, view) {
+  if (el.classList.contains("col-active")) return;
+  closeCollectionAction(); // close any previously open action first
+
+  // Re-query the element after re-render triggered by closeCollectionAction.
+  // For grid: find the card whose ISBN matches. For list: find the matching row.
+  let target;
+  if (view === "grid") {
+    const allCards = collectionBodyEl.querySelectorAll(".book-card");
+    const idx = cachedBooks.findIndex((b) => b.isbn === book.isbn);
+    target = allCards[idx];
+  } else {
+    const allRows = collectionBodyEl.querySelectorAll("tbody tr");
+    const idx = cachedBooks.findIndex((b) => b.isbn === book.isbn);
+    target = allRows[idx];
+  }
+  if (!target) return;
+
+  target.classList.add("col-active");
+
+  let container;
+  if (view === "list") {
+    const actionTr = document.createElement("tr");
+    actionTr.className = "col-action-row";
+    actionTr.innerHTML = `<td colspan="5" class="col-action-cell"><em>Loading…</em></td>`;
+    target.insertAdjacentElement("afterend", actionTr);
+    container = actionTr.querySelector(".col-action-cell");
+  } else {
+    target.innerHTML = `<div class="col-action-cell"><em>Loading…</em></div>`;
+    container = target.querySelector(".col-action-cell");
+  }
+
+  try {
+    const { open_loans } = await getJson(`/api/book/${book.isbn}`);
+    fillCollectionActionUI(book, open_loans, container);
+  } catch (err) {
+    container.innerHTML = `<p class="col-err">${esc(err.message)}</p>
+      <button class="col-cancel-btn">Cancel</button>`;
+    container.querySelector(".col-cancel-btn").addEventListener("click", closeCollectionAction);
+  }
+}
+
+function fillCollectionActionUI(book, openLoans, container) {
+  const avail = book.available ?? 0;
+
+  container.innerHTML = `
+    <span class="col-book-title">${esc(book.title || "")}</span>
+    <div class="col-btns">
+      ${avail > 0
+        ? `<button class="col-borrow-btn">Borrow</button>`
+        : `<span class="col-unavail">No copies available</span>`}
+      ${openLoans.length > 0 ? `<button class="col-return-btn">Return</button>` : ""}
+      <button class="col-cancel-btn">Cancel</button>
+    </div>
+    <div class="col-form"></div>`;
+
+  const formEl = container.querySelector(".col-form");
+
+  container.querySelector(".col-cancel-btn").addEventListener("click", closeCollectionAction);
+
+  container.querySelector(".col-borrow-btn")?.addEventListener("click", () => {
+    formEl.innerHTML = `
+      <input class="col-name-input" placeholder="Your name" autocomplete="off" />
+      <button class="col-confirm-btn">Confirm</button>`;
+    const nameInput = formEl.querySelector(".col-name-input");
+    nameInput.focus();
+    const doBorrow = async () => {
+      const borrower = nameInput.value.trim();
+      if (!borrower) { nameInput.focus(); return; }
+      try {
+        await postJson(`/api/borrow/${book.isbn}`, { borrower });
+        await loadCollection();
+      } catch (err) {
+        formEl.innerHTML = `<p class="col-err">${esc(err.message)}</p>`;
+      }
+    };
+    formEl.querySelector(".col-confirm-btn").addEventListener("click", doBorrow);
+    nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doBorrow(); });
+  });
+
+  container.querySelector(".col-return-btn")?.addEventListener("click", () => {
+    const loanHtml = openLoans
+      .map((loan) => `
+        <div class="col-loan-row">
+          <span>${esc(loan.borrower)} · ${esc((loan.borrowed_at || "").slice(0, 10))}</span>
+          <button class="col-return-one-btn" data-loan="${loan.loan_id}">Return</button>
+        </div>`)
+      .join("");
+    formEl.innerHTML = loanHtml;
+    formEl.querySelectorAll(".col-return-one-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        try {
+          await postJson(`/api/return/${book.isbn}`, { loan_id: Number(btn.dataset.loan) });
+          await loadCollection();
+        } catch (err) {
+          formEl.innerHTML = `<p class="col-err">${esc(err.message)}</p>`;
+        }
+      });
+    });
+  });
 }
 
 // --- Mode switching ---

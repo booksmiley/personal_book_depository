@@ -37,6 +37,9 @@ backup_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/book_depository/"
 # Safe to paste here because this file is git-ignored.
 google_books_api_key: ""
 
+# Display name shown in the browser tab and page heading.
+title: "My Library"
+
 # UI theme. Options:
 #   apple    — clean white cards, SF Pro font, blue accents (default)
 #   win95    — silver desktop, 3-D beveled chrome, teal taskbar
