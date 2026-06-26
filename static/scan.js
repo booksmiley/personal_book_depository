@@ -239,12 +239,34 @@ function renderReturnCard(book, openLoans) {
   actions.querySelector("#next").addEventListener("click", () => resumeScanning());
 }
 
-// --- Collection: cover grid of all registered books ---
+// --- Collection: cover grid or list of all registered books ---
+let collectionView = localStorage.getItem("collectionView") || "grid";
+let cachedBooks = null;
+
+const viewGridBtn = document.getElementById("view-grid-btn");
+const viewListBtn = document.getElementById("view-list-btn");
+
+function setCollectionView(view) {
+  collectionView = view;
+  localStorage.setItem("collectionView", view);
+  viewGridBtn.classList.toggle("active", view === "grid");
+  viewListBtn.classList.toggle("active", view === "list");
+  if (cachedBooks) renderCollection(cachedBooks);
+}
+
+viewGridBtn.addEventListener("click", () => setCollectionView("grid"));
+viewListBtn.addEventListener("click", () => setCollectionView("list"));
+
+// Sync toggle button state on load.
+viewGridBtn.classList.toggle("active", collectionView === "grid");
+viewListBtn.classList.toggle("active", collectionView === "list");
+
 async function loadCollection() {
   collectionCountEl.textContent = "";
   collectionBodyEl.innerHTML = "<p>Loading…</p>";
   try {
     const { books } = await getJson("/api/books");
+    cachedBooks = books;
     renderCollection(books);
   } catch (err) {
     collectionBodyEl.innerHTML = `<p style="color:#c00">${esc(err.message)}</p>`;
@@ -254,21 +276,24 @@ async function loadCollection() {
 function renderCollection(books) {
   collectionCountEl.textContent =
     books.length === 0 ? "" : `${books.length} book${books.length === 1 ? "" : "s"}`;
-
   if (books.length === 0) {
     collectionBodyEl.innerHTML = "<p>No books registered yet.</p>";
     return;
   }
+  if (collectionView === "list") renderList(books);
+  else renderGrid(books);
+}
 
+function renderGrid(books) {
   const cards = books
     .map((book) => {
       const cover = book.cover_url
-        ? `<img src="${esc(book.cover_url)}" alt="cover" />`
+        ? `<img src="${esc(book.cover_url)}" alt="cover" loading="lazy" />`
         : `<div class="no-cover">${esc(book.title || "")}</div>`;
       const avail = book.available ?? 0;
       const total = book.total_count ?? 1;
       const badgeClass = avail > 0 ? "badge-ok" : "badge-out";
-      const badgeLabel = avail > 0 ? `${avail} / ${total} available` : "All out";
+      const badgeLabel = avail > 0 ? `${avail}/${total}` : "Out";
       return `
         <div class="book-card">
           ${cover}
@@ -280,8 +305,33 @@ function renderCollection(books) {
         </div>`;
     })
     .join("");
-
   collectionBodyEl.innerHTML = `<div class="book-grid">${cards}</div>`;
+}
+
+function renderList(books) {
+  const rows = books
+    .map((book) => {
+      const avail = book.available ?? 0;
+      const total = book.total_count ?? 1;
+      const badgeClass = avail > 0 ? "badge-ok" : "badge-out";
+      const badgeLabel = avail > 0 ? `${avail}/${total}` : "Out";
+      return `
+        <tr>
+          <td>${esc(book.title || "(no title)")}</td>
+          <td>${esc(book.author || "")}</td>
+          <td>${esc(book.year || "")}</td>
+          <td>${esc(book.publisher || "")}</td>
+          <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+        </tr>`;
+    })
+    .join("");
+  collectionBodyEl.innerHTML = `
+    <table class="book-list">
+      <thead><tr>
+        <th>Title</th><th>Author</th><th>Year</th><th>Publisher</th><th>Status</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // --- Mode switching ---

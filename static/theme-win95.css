@@ -221,13 +221,21 @@ button:disabled { opacity: 0.45; cursor: default; }
 #collection-header span { font-weight: normal; font-size: 0.72rem; opacity: 0.85; }
 #reload-btn { font-size: 0.7rem; padding: 1px 8px; margin: 0; }
 
-.book-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  padding: 4px;
-}
-@media (max-width: 600px) { .book-grid { grid-template-columns: repeat(2, 1fr); } }
+/* View toggle */
+.view-toggle { display: flex; gap: 2px; }
+.view-btn { margin: 0; padding: 2px 8px; font-size: 0.7rem; }
+.view-btn.active { border-color: var(--sh) var(--hi) var(--hi) var(--sh); box-shadow: none; background: var(--silver); font-weight: bold; }
+
+/* Grid */
+.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; padding: 4px; }
+
+/* List view */
+.book-list { width: 100%; border-collapse: collapse; font-family: "Courier New", monospace; font-size: 0.76rem; }
+.book-list th { text-align: left; padding: 3px 6px; background: var(--navy); color: #fff; font-weight: bold; border: 1px solid var(--dk); }
+.book-list td { padding: 3px 6px; border: 1px solid var(--sh); background: #fff; vertical-align: middle; }
+.book-list tr:nth-child(even) td { background: #f0f0f0; }
+.book-list td:nth-child(3) { white-space: nowrap; }
+@media (max-width: 600px) { .book-list td:nth-child(4) { display: none; } .book-list th:nth-child(4) { display: none; } }
 
 .book-card {
   background: var(--silver);
