@@ -57,10 +57,12 @@
       <div id="camera-ui">
         <button id="start">Start camera</button>
         <button id="stop" disabled>Stop</button>
+        <button id="snap" disabled>📷 Snap</button>
         <video id="video" playsinline muted></video>
         <p id="status">Idle.</p>
         <section id="result"></section>
       </div>
+      <canvas id="snap-canvas" hidden></canvas>
     </div>
 
     <section id="collection" hidden>

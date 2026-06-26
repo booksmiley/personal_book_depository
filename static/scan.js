@@ -10,6 +10,8 @@ import { BarcodeDetector } from "https://esm.sh/barcode-detector@2/pure";
 const video = document.getElementById("video");
 const startBtn = document.getElementById("start");
 const stopBtn = document.getElementById("stop");
+const snapBtn = document.getElementById("snap");
+const snapCanvas = document.getElementById("snap-canvas");
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const cameraUi = document.getElementById("camera-ui");
@@ -54,6 +56,7 @@ async function startCamera() {
     resumeScanning();
     startBtn.disabled = true;
     stopBtn.disabled = false;
+    snapBtn.disabled = false;
     requestAnimationFrame(scanLoop);
   } catch (err) {
     // Most common cause on a phone: not served over HTTPS (camera is blocked).
@@ -68,6 +71,7 @@ function stopCamera() {
   stream = null;
   startBtn.disabled = false;
   stopBtn.disabled = true;
+  snapBtn.disabled = true;
   setStatus("Stopped.");
 }
 
@@ -353,6 +357,31 @@ async function returnLoan(book, loanId) {
     setStatus(err.message);
   }
 }
+
+snapBtn.addEventListener("click", async () => {
+  if (!scanning || reviewing || busy) return;
+
+  // Freeze the current video frame onto the hidden canvas.
+  snapCanvas.width = video.videoWidth;
+  snapCanvas.height = video.videoHeight;
+  snapCanvas.getContext("2d").drawImage(video, 0, 0);
+
+  setStatus("Decoding snapshot…");
+  busy = true;
+  try {
+    const barcodes = await detector.detect(snapCanvas);
+    if (barcodes.length === 0) {
+      setStatus("No barcode found — hold steady and try again.");
+      busy = false;
+      return;
+    }
+    const ok = await handleScan(barcodes[0].rawValue);
+    if (ok) reviewing = true;
+  } catch (err) {
+    setStatus(`Snap error: ${err.message}`);
+  }
+  busy = false;
+});
 
 startBtn.addEventListener("click", startCamera);
 stopBtn.addEventListener("click", stopCamera);
