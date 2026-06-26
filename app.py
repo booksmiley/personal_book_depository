@@ -1,6 +1,7 @@
 """Flask entry point — thin glue. The real logic lives in book_depository/."""
 
 import logging
+import os
 
 from flask import Flask, abort, jsonify, render_template, request
 
@@ -32,6 +33,8 @@ app = Flask(__name__)
 # No logins yet, so everything lands in one owner's DB. This is the single spot
 # that becomes per-user later (e.g. owner from the URL or a session).
 DEFAULT_OWNER = "lib_admin"
+THEME = os.environ.get("BOOK_THEME", "apple")
+_VALID_THEMES = {"apple", "win95", "terminal"}
 
 
 @app.errorhandler(400)
@@ -45,7 +48,8 @@ def json_error(err):
 @app.get("/")
 def index():
     """Serve the scan page (camera lives in the browser)."""
-    return render_template("scan.html")
+    theme = THEME if THEME in _VALID_THEMES else "apple"
+    return render_template("scan.html", theme=theme)
 
 
 @app.get("/api/lookup/<raw_isbn>")

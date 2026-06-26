@@ -1,0 +1,256 @@
+/* Green phosphor terminal — CRT glow, scanlines, VT323 font */
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+:root {
+  --green:    #33ff33;
+  --green-d:  #1a8c1a;
+  --green-bg: rgba(51, 255, 51, 0.07);
+  --bg:       #0a0a0a;
+  --panel:    #0d0f0d;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: "VT323", "Courier New", monospace;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  background: var(--bg);
+  color: var(--green);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+  min-height: 100vh;
+}
+
+/* Scanline overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 2px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.scan-wrap { max-width: 480px; }
+
+h1 {
+  font-size: 1.6rem;
+  font-weight: normal;
+  letter-spacing: 0.1em;
+  margin: 0 0 1rem;
+  text-shadow: 0 0 10px var(--green);
+  border-bottom: 1px solid var(--green-d);
+  padding-bottom: 0.4rem;
+}
+h1::before { content: "> "; opacity: 0.6; }
+
+/* Segmented control → bracketed menu */
+.segment-control {
+  display: flex;
+  gap: 4px;
+  background: transparent;
+  margin-bottom: 1rem;
+  padding: 0;
+  border: none;
+}
+.segment {
+  flex: 1;
+  text-align: center;
+  padding: 5px 2px;
+  border: 1px solid var(--green-d);
+  cursor: pointer;
+  font-family: "VT323", monospace;
+  font-size: 0.95rem;
+  color: var(--green-d);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: all 0.1s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.segment input[type="radio"] { display: none; }
+.segment:has(input:checked) {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-bg);
+  text-shadow: 0 0 8px var(--green);
+  box-shadow: 0 0 8px var(--green-bg), inset 0 0 8px var(--green-bg);
+}
+
+video {
+  width: 100%;
+  background: #000;
+  border: 1px solid var(--green-d);
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  margin: 0.5rem 0;
+  display: block;
+  box-shadow: 0 0 14px var(--green-bg);
+}
+
+/* ── Buttons ── */
+button {
+  font-family: "VT323", monospace;
+  font-size: 1rem;
+  padding: 3px 14px;
+  margin: 2px 5px 2px 0;
+  background: transparent;
+  border: 1px solid var(--green-d);
+  color: var(--green-d);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: all 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+button:not(:disabled):active {
+  border-color: var(--green);
+  color: var(--green);
+  text-shadow: 0 0 8px var(--green);
+  box-shadow: 0 0 8px var(--green-bg);
+}
+button:disabled { opacity: 0.25; cursor: default; }
+
+#start, #add, #borrow, .return-one {
+  border-color: var(--green);
+  color: var(--green);
+  text-shadow: 0 0 6px var(--green);
+}
+
+#status {
+  font-size: 0.95rem;
+  color: var(--green-d);
+  min-height: 1.4em;
+  margin: 0.25rem 0 0;
+  letter-spacing: 0.03em;
+}
+#status::before { content: "# "; }
+
+/* Manual ISBN entry */
+#manual-entry {
+  display: flex;
+  gap: 4px;
+  margin: 0.5rem 0 0;
+}
+#manual-isbn {
+  flex: 1;
+  font-family: "VT323", monospace;
+  font-size: 1rem;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--green-d);
+  color: var(--green);
+  outline: none;
+  letter-spacing: 0.05em;
+}
+#manual-isbn::placeholder { color: var(--green-d); }
+#manual-isbn:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 8px var(--green-bg);
+}
+#manual-go { flex-shrink: 0; }
+
+/* Result panel */
+#result {
+  margin-top: 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--green-d);
+  padding: 0.75rem;
+  display: none;
+  gap: 0.75rem;
+  box-shadow: 0 0 12px var(--green-bg);
+}
+#result:not(:empty) { display: flex; }
+#result img {
+  width: 72px;
+  height: 108px;
+  object-fit: cover;
+  border: 1px solid var(--green-d);
+  flex-shrink: 0;
+  filter: sepia(1) hue-rotate(75deg) saturate(4) brightness(0.85);
+}
+#result > div { flex: 1; min-width: 0; }
+#result strong { font-size: 1.05rem; display: block; margin-bottom: 2px; color: var(--green); text-shadow: 0 0 6px var(--green); }
+#result small  { color: var(--green-d); font-size: 0.88rem; }
+
+#result input {
+  font-family: "VT323", monospace;
+  font-size: 1rem;
+  padding: 4px 8px;
+  margin: 6px 0 3px;
+  display: block;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--green-d);
+  color: var(--green);
+  outline: none;
+}
+#result input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 8px var(--green-bg);
+}
+
+.loan {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 0;
+  border-top: 1px solid var(--green-d);
+}
+.loan span { font-size: 0.92rem; color: var(--green-d); }
+.loan .return-one { font-size: 0.88rem; padding: 2px 10px; }
+
+/* Collection */
+#collection { margin-top: 0.75rem; }
+#collection-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--green-d);
+  padding-bottom: 0.4rem;
+}
+#collection-header span { color: var(--green-d); font-size: 0.92rem; }
+#reload-btn { font-size: 0.88rem; padding: 2px 10px; margin: 0; }
+
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+@media (max-width: 600px) { .book-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.book-card {
+  background: var(--panel);
+  border: 1px solid var(--green-d);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.book-card:hover {
+  border-color: var(--green);
+  box-shadow: 0 0 8px var(--green-bg);
+}
+.book-card img {
+  width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block;
+  filter: sepia(1) hue-rotate(75deg) saturate(4) brightness(0.85);
+}
+.no-cover {
+  width: 100%; aspect-ratio: 2 / 3; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--green-d); font-size: 0.75rem; text-align: center; padding: 4px;
+}
+.book-card .info { padding: 5px; }
+.book-card .info strong { font-size: 0.82rem; display: block; margin-bottom: 2px; line-height: 1.3; color: var(--green); }
+.book-card .info .author { color: var(--green-d); font-size: 0.72rem; display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { display: inline-block; font-size: 0.7rem; padding: 1px 5px; border: 1px solid; text-transform: uppercase; }
+.badge-ok  { border-color: var(--green); color: var(--green); }
+.badge-out { border-color: #ff3333;     color: #ff3333; }

@@ -42,6 +42,8 @@ def main() -> None:
     api_key = cfg.get("GOOGLE_BOOKS_API_KEY") or cfg.get("google_books_api_key")
     if api_key:
         os.environ["GOOGLE_BOOKS_API_KEY"] = api_key
+    theme = cfg.get("theme", "apple")
+    os.environ["BOOK_THEME"] = theme
 
     from app import app  # noqa: E402 — must come after env is set
 

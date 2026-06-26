@@ -12,6 +12,8 @@ const startBtn = document.getElementById("start");
 const stopBtn = document.getElementById("stop");
 const snapBtn = document.getElementById("snap");
 const snapCanvas = document.getElementById("snap-canvas");
+const manualIsbn = document.getElementById("manual-isbn");
+const manualGo = document.getElementById("manual-go");
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const cameraUi = document.getElementById("camera-ui");
@@ -382,6 +384,19 @@ snapBtn.addEventListener("click", async () => {
   }
   busy = false;
 });
+
+async function submitManualIsbn() {
+  const raw = manualIsbn.value.trim().replace(/[-\s]/g, "");
+  if (!raw || reviewing || busy) return;
+  manualIsbn.value = "";
+  busy = true;
+  const ok = await handleScan(raw);
+  if (ok) reviewing = true;
+  busy = false;
+}
+
+manualGo.addEventListener("click", submitManualIsbn);
+manualIsbn.addEventListener("keydown", (e) => { if (e.key === "Enter") submitManualIsbn(); });
 
 startBtn.addEventListener("click", startCamera);
 stopBtn.addEventListener("click", stopCamera);

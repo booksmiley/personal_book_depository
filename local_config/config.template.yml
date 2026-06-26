@@ -36,3 +36,9 @@ backup_dir: "~/Library/Mobile Documents/com~apple~CloudDocs/book_depository/"
 # Open Library only. Get a key at https://console.cloud.google.com (Books API).
 # Safe to paste here because this file is git-ignored.
 google_books_api_key: ""
+
+# UI theme. Options:
+#   apple    — clean white cards, SF Pro font, blue accents (default)
+#   win95    — silver desktop, 3-D beveled chrome, teal taskbar
+#   terminal — green phosphor on black, CRT scanlines, VT323 font
+theme: apple
