@@ -13,6 +13,9 @@ from enum import Enum
 
 import requests
 
+from book_depository.douban import fetch_douban_metadata
+from book_depository.nlc import fetch_nlc_metadata
+
 log = logging.getLogger(__name__)
 GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
@@ -26,6 +29,8 @@ TIMEOUT = 10  # seconds — never let a slow API hang the request
 class ApiSource(Enum):
     google = "GOOGLE"
     open_lib = "OPEN_LIB"
+    douban = "DOUBAN"
+    nlc = "NLC"
 
 
 @dataclass
@@ -43,7 +48,7 @@ class Book:
 
 
 def fetch_book_metadata(isbn: str) -> Book | None:
-    for source in (_from_google_books, _from_open_library):
+    for source in (_from_douban, _from_google_books, _from_open_library, _from_nlc):
         try:
             book = source(isbn)
         except requests.RequestException as err:
@@ -111,6 +116,53 @@ def _from_google_books(isbn: str) -> Book | None:
         publisher=info.get("publisher", ""),
         year=info.get("publishedDate", ""),
         source=ApiSource.google.value,
+    )
+
+
+def _from_douban(isbn: str) -> Book | None:
+    data = fetch_douban_metadata(isbn)
+    if data is None:
+        return None
+    return Book(
+        isbn=isbn,
+        title=data["title"],
+        author=data["author"],
+        cover_url=_cover_url(isbn),  # Douban blocks hotlinking; use GB or OL instead
+        publisher=data["publisher"],
+        year=data["year"],
+        source=ApiSource.douban.value,
+    )
+
+
+def _cover_url(isbn: str) -> str:
+    """Return a hotlink-friendly cover URL: Google Books thumbnail, else Open Library."""
+    try:
+        params = {"q": f"isbn:{isbn}"}
+        if GOOGLE_BOOKS_API_KEY:
+            params["key"] = GOOGLE_BOOKS_API_KEY
+        resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
+        items = resp.json().get("items")
+        if items:
+            url = items[0]["volumeInfo"].get("imageLinks", {}).get("thumbnail", "")
+            if url:
+                return url
+    except requests.RequestException:
+        pass
+    return COVER_URL.format(isbn=isbn)
+
+
+def _from_nlc(isbn: str) -> Book | None:
+    data = fetch_nlc_metadata(isbn)
+    if data is None:
+        return None
+    return Book(
+        isbn=isbn,
+        title=data["title"],
+        author=data["author"],
+        cover_url="",  # NLC OPAC has no cover images
+        publisher=data["publisher"],
+        year=data["year"],
+        source=ApiSource.nlc.value,
     )
 
 

@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Scan a book</title>
     <style>
-      body { font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 1rem; }
+      body { font-family: system-ui, sans-serif; max-width: 960px; margin: 0 auto; padding: 1rem; }
+      /* Scan UI stays narrow; collection can use full body width */
+      .scan-wrap { max-width: 480px; }
       video { width: 100%; background: #000; border-radius: 8px; aspect-ratio: 16 / 9; object-fit: cover; }
       button { font-size: 1rem; padding: 0.6rem 1.2rem; margin: 0.5rem 0.5rem 0.5rem 0; }
       #status { color: #555; min-height: 1.4em; }
@@ -22,7 +24,8 @@
       #collection-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
       #collection-header span { color: #555; font-size: 0.95rem; }
       #reload-btn { font-size: 0.85rem; padding: 0.3rem 0.7rem; margin: 0; }
-      .book-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+      .book-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+      @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(2, 1fr); } }
       .book-card { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: #fff; }
       .book-card img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; }
       .no-cover {
@@ -40,22 +43,24 @@
     </style>
   </head>
   <body>
-    <h1>Scan a book</h1>
+    <div class="scan-wrap">
+      <h1>Scan a book</h1>
 
-    <fieldset id="mode">
-      <legend>Mode</legend>
-      <label><input type="radio" name="mode" value="register" checked /> Register</label>
-      <label><input type="radio" name="mode" value="borrow" /> Borrow</label>
-      <label><input type="radio" name="mode" value="return" /> Return</label>
-      <label><input type="radio" name="mode" value="collection" /> Collection</label>
-    </fieldset>
+      <fieldset id="mode">
+        <legend>Mode</legend>
+        <label><input type="radio" name="mode" value="register" checked /> Register</label>
+        <label><input type="radio" name="mode" value="borrow" /> Borrow</label>
+        <label><input type="radio" name="mode" value="return" /> Return</label>
+        <label><input type="radio" name="mode" value="collection" /> Collection</label>
+      </fieldset>
 
-    <div id="camera-ui">
-      <button id="start">Start camera</button>
-      <button id="stop" disabled>Stop</button>
-      <video id="video" playsinline muted></video>
-      <p id="status">Idle.</p>
-      <section id="result"></section>
+      <div id="camera-ui">
+        <button id="start">Start camera</button>
+        <button id="stop" disabled>Stop</button>
+        <video id="video" playsinline muted></video>
+        <p id="status">Idle.</p>
+        <section id="result"></section>
+      </div>
     </div>
 
     <section id="collection" hidden>

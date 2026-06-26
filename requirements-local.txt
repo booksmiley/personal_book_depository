@@ -1,6 +1,7 @@
 # Extra deps needed only for local phone testing (run_local.py).
 # Not installed on Render — keeps the production image lean.
 pyyaml>=6.0.1
+playwright>=1.40       # NLC scraping via headless Chromium (run: playwright install chromium)
 # NOTE: no `cryptography` here on purpose — it tries to compile from Rust source on
 # this machine and fails. For HTTPS we use an openssl-generated cert instead (set
 # certfile/keyfile in config.yml). stdlib `ssl` loads those with no extra packages.

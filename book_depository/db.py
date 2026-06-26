@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS books (
     cover_url   TEXT,
     publisher   TEXT,
     year        TEXT,
+    source      TEXT,
     total_count INTEGER NOT NULL DEFAULT 1,
     available   INTEGER NOT NULL DEFAULT 1
 );
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS loans (
 
 
 BOOK_QUERY_BY_ISBN = "SELECT * FROM books WHERE isbn = ?"
-BOOK_INSERT = "INSERT INTO books (isbn, title, author, cover_url, publisher, year) VALUES (?, ?, ?, ?, ?, ?)"
+BOOK_INSERT = "INSERT INTO books (isbn, title, author, cover_url, publisher, year, source) VALUES (?, ?, ?, ?, ?, ?, ?)"
 BOOK_UPDATE_COPY = (
     "UPDATE books SET total_count = total_count + 1, available = available + 1 "
     "WHERE isbn = ?"
@@ -79,7 +80,15 @@ def find_book_by_isbn(conn: sqlite3.Connection, isbn: str):
 def add_book(conn: sqlite3.Connection, book) -> int:
     cur = conn.execute(
         BOOK_INSERT,
-        (book.isbn, book.title, book.author, book.cover_url, book.publisher, book.year),
+        (
+            book.isbn,
+            book.title,
+            book.author,
+            book.cover_url,
+            book.publisher,
+            book.year,
+            book.source,
+        ),
     )
     conn.commit()
     return cur.lastrowid
