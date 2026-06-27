@@ -179,12 +179,14 @@ function bookInfoHtml(book, showCounts) {
     showCounts && book.available != null
       ? `<br /><small>${book.available} of ${book.total_count} available</small>`
       : "";
+  // Only allow https:// cover URLs — blocks javascript: and data: schemes.
+  const safeCover = /^https:\/\//.test(book.cover_url || "") ? book.cover_url : "";
   return `
-    ${book.cover_url ? `<img src="${book.cover_url}" alt="cover" />` : ""}
+    ${safeCover ? `<img src="${esc(safeCover)}" alt="cover" />` : ""}
     <div>
-      <strong>${book.title || "(no title)"}</strong><br />
-      ${book.author || ""}<br />
-      <small>ISBN ${book.isbn}</small>${counts}
+      <strong>${esc(book.title || "(no title)")}</strong><br />
+      ${esc(book.author || "")}<br />
+      <small>ISBN ${esc(book.isbn || "")}</small>${counts}
       <div id="actions"></div>
     </div>`;
 }

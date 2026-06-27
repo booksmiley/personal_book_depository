@@ -1,9 +1,10 @@
 """Flask entry point — thin glue. The real logic lives in book_depository/."""
 
+import base64
 import logging
 import os
 
-from flask import Flask, abort, jsonify, render_template, request
+from flask import Flask, Response, abort, jsonify, render_template, request
 
 from book_depository.db import (
     BACKUP_DIR,
@@ -36,6 +37,29 @@ DEFAULT_OWNER = "lib_admin"
 THEME = os.environ.get("BOOK_THEME", "apple")
 TITLE = os.environ.get("BOOK_TITLE", "Library")
 _VALID_THEMES = {"apple", "win95", "terminal"}
+# Set BOOK_PASSWORD on Render to password-protect the whole site.
+# Leave unset (or empty) for local LAN use where the network is the perimeter.
+BOOK_PASSWORD = os.environ.get("BOOK_PASSWORD", "")
+
+
+@app.before_request
+def check_auth():
+    if not BOOK_PASSWORD:
+        return
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
+            _, _, password = decoded.partition(":")
+            if password == BOOK_PASSWORD:
+                return
+        except Exception:
+            pass
+    return Response(
+        "Library access is password-protected.",
+        401,
+        {"WWW-Authenticate": 'Basic realm="Library"'},
+    )
 
 
 @app.errorhandler(400)
