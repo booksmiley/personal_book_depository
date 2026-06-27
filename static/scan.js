@@ -488,11 +488,9 @@ async function registerBook(book, confirm = false) {
       setStatus(`Added ✅ "${data.book.title}" — scanning for the next book.`);
       resumeScanning(true);
     } else if (data.status === "exists") {
-      if (window.confirm(`"${data.book.title}" is already registered — add another copy?`)) {
-        return registerBook(book, true);
-      }
-      setStatus("Okay, not added — scanning for the next book.");
-      resumeScanning(true);
+      // Ask inline (NOT window.confirm): a blocking dialog freezes the camera
+      // stream on mobile and it won't resume without restarting the camera.
+      promptAddCopy(book, data.book);
     } else if (data.status === "copy_added") {
       setStatus(`Copy added — ${data.book.available} of ${data.book.total_count} available. Scanning…`);
       resumeScanning(true);
@@ -500,6 +498,21 @@ async function registerBook(book, confirm = false) {
   } catch (err) {
     setStatus(err.message); // stay on the card so the user can retry
   }
+}
+
+// Duplicate scan: ask in the card whether to add another copy. Inline buttons
+// instead of window.confirm so the live camera stream is never interrupted.
+function promptAddCopy(book, existing) {
+  const actions = resultEl.querySelector("#actions");
+  if (!actions) return;
+  setStatus(`"${existing.title}" is already registered — add another copy?`);
+  actions.innerHTML = `<button id="add-copy">Yes, add a copy</button>
+                       <button id="no-copy">No</button>`;
+  actions.querySelector("#add-copy").addEventListener("click", () => registerBook(book, true));
+  actions.querySelector("#no-copy").addEventListener("click", () => {
+    setStatus("Okay, not added — scanning for the next book.");
+    resumeScanning(true);
+  });
 }
 
 async function borrowBook(book) {
