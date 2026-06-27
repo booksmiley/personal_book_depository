@@ -17,6 +17,9 @@ Stack: Python + Flask + SQLite (one file per owner), zero-build JS frontend.
 - **Return**: scan → see open loans → tap the exact loan to close.
 - **Collection**: grid or list view of every registered book with availability badges;
   tap any book to borrow or return inline without leaving the page.
+- **Schema migrations**: numbered SQL files in `db_lib/`, applied automatically on
+  connection and tracked per-database with `PRAGMA user_version`. Adding a column is
+  just dropping a new file — see [Database migrations](#database-migrations).
 - **Themes**: `apple` (default), `win95`, `terminal` — set via env var or config file.
 - **iCloud backup**: consistent SQLite snapshot written after every write (config-driven,
   off by default on Render).
@@ -35,6 +38,7 @@ camera + decode EAN-13   ──GET──>  /api/lookup/<isbn>
 
 Register mode            ──POST─>  /api/register/<isbn>
                                      book_depository/db.py       (write)
+                                       └─ db_lib/  (schema migrations, run on connect)
 
 Borrow mode              ──GET──>  /api/book/<isbn>      (open loans)
                          ──POST─>  /api/borrow/<isbn>    (borrow copy)
@@ -44,6 +48,41 @@ Return mode              ──GET──>  /api/book/<isbn>      (list to pick f
 
 Collection mode          ──GET──>  /api/books            (all books)
 ```
+
+## Database migrations
+
+The schema is defined by numbered SQL files in `db_lib/`, not by code. Each file is
+named `NNNN_description.sql`:
+
+```
+db_lib/
+  __init__.py                          # the runner: run_migrations(conn)
+  0001_initial_schema.sql              # books + loans tables
+  0002_add_language_column_to_books.sql
+```
+
+`run_migrations(conn)` is called in `get_db()` on every connection. It reads the
+database's `PRAGMA user_version`, then applies every file whose number is higher, in
+order, bumping the version after each. So a database created last month at version 2
+automatically picks up a new `0003_*.sql` on its next open, while a brand-new empty
+database runs `0001` onward from scratch. No file ever runs twice.
+
+Each file runs inside a single transaction, so the schema change and the version bump
+commit together — if a file errors, it rolls back as one and retries cleanly next time.
+
+**To change the schema**, add a new file with the next number and deploy:
+
+```sql
+-- db_lib/0003_add_book_tags.sql
+ALTER TABLE books ADD COLUMN tags TEXT;
+```
+
+SQLite `ADD COLUMN` limits to keep in mind: no `NOT NULL` without a constant `DEFAULT`,
+no `UNIQUE`, no `PRIMARY KEY`, and the `DEFAULT` must be a literal. For anything beyond
+adding nullable columns (renaming, retyping, adding constraints) use the "12-step"
+table-rebuild pattern inside the migration file.
+
+Before applying migrations to real data, take a `backup_db()` snapshot first.
 
 ## Run on your laptop
 

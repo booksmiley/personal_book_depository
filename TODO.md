@@ -14,6 +14,13 @@ Stack: Python + Flask + stdlib sqlite3 (DB-per-owner). Frontend = zero-build JS 
   server doesn't re-fetch from the slow API.
 - **DB layer (register)**: `find_book_by_isbn`, `add_book`, `add_copy`. `available`
   stored in `books` (not derived).
+- **Schema migrations** (`db_lib/`): numbered `NNNN_*.sql` files applied in order,
+  tracked per-DB via `PRAGMA user_version`. `run_migrations(conn)` runs in `get_db()`
+  on every connection (fits DB-per-owner lazy creation; near-free no-op when current).
+  Each file runs in one transaction (DDL + version bump commit together, roll back as
+  one on failure). `0001` mirrors the shipped schema with `IF NOT EXISTS` so existing
+  DBs stamp forward with no data loss. Adding a column = drop a new file, deploy.
+  Verified on both fresh and legacy-with-data DBs.
 - **Deploy**: live on Render (gunicorn, `render.yaml`); phone tested over HTTPS.
   Free tier = data EPHEMERAL (no disk).
 - **Local run for phone**: `run_local.py` reads `local_config/config.yml` (git-ignored),
