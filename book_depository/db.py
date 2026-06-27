@@ -12,6 +12,8 @@ import os
 import sqlite3
 from pathlib import Path
 
+from db_lib import run_migrations
+
 # Where the per-owner SQLite files live. Defaults to ./data inside the repo (git
 # -ignored), but BOOK_DATA_DIR overrides it so local runs can keep personal library
 # data in a safe location outside the project. run_local.py sets this from config.yml.
@@ -20,34 +22,9 @@ DATA_DIR = Path(
 )
 BACKUP_DIR = os.environ.get("BOOK_BACKUP_DIR", "")
 
-# One source of truth for the schema. Open question from the brief: store `available`
-# or derive it from the ledger. This scaffold STORES it (simplest); revisit later.
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS books (
-    book_id     INTEGER PRIMARY KEY,
-    isbn        TEXT UNIQUE NOT NULL,
-    title       TEXT NOT NULL,
-    author      TEXT,
-    cover_url   TEXT,
-    publisher   TEXT,
-    year        TEXT,
-    source      TEXT,
-    total_count INTEGER NOT NULL DEFAULT 1,
-    available   INTEGER NOT NULL DEFAULT 1
-);
-
--- One row per borrow. `returned_at IS NULL` means the copy is still out, so a
--- book's open loans are just its rows with a null returned_at. Minimal borrower
--- info for now (a label); a `contact` column can be added later when we have
--- secure storage. This replaces the old status/contacts tables.
-CREATE TABLE IF NOT EXISTS loans (
-    loan_id     INTEGER PRIMARY KEY,
-    book_id     INTEGER NOT NULL REFERENCES books(book_id),
-    borrower    TEXT NOT NULL,
-    borrowed_at TEXT NOT NULL DEFAULT (datetime('now')),
-    returned_at TEXT
-);
-"""
+# The schema is now defined by the numbered .sql files in db_lib/, applied in order
+# and tracked per-DB via PRAGMA user_version (see db_lib/__init__.py). New columns =
+# drop a new NNNN_*.sql file; it runs automatically on the next connection.
 
 
 BOOK_QUERY_BY_ISBN = "SELECT * FROM books WHERE isbn = ?"
@@ -67,7 +44,7 @@ def get_db(owner: str) -> sqlite3.Connection:
     conn = sqlite3.connect(DATA_DIR / f"{owner}.sqlite")
     conn.row_factory = sqlite3.Row  # rows behave like dicts
     conn.execute("PRAGMA foreign_keys = ON")  # sqlite needs this per-connection
-    conn.executescript(SCHEMA)  # idempotent — safe to run every open
+    run_migrations(conn)  # apply any pending schema migrations (idempotent)
     return conn
 
 
