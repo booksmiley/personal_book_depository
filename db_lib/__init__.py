@@ -40,13 +40,18 @@ def run_migrations(conn: sqlite3.Connection) -> None:
             continue
 
         # Wrap the file in one transaction so the DDL and the version bump commit
-        # together. SQLite DDL is transactional, so if anything in the file raises,
-        # the whole thing (including the user_version change) rolls back and the
-        # next start retries cleanly from the same version.
+        # together. SQLite DDL is transactional, so on success it's all-or-nothing.
         #
-        # Note: executescript() issues an implicit COMMIT first, but we open a fresh
-        # connection with nothing pending, so that is a harmless no-op here.
+        # On failure we must roll back EXPLICITLY: executescript() leaves the
+        # transaction open when a statement raises, and — worse — the next
+        # executescript() begins with an implicit COMMIT that would finalize that
+        # half-applied migration. Rolling back here undoes the partial change so the
+        # next start retries cleanly from the same version.
         body = path.read_text()
-        conn.executescript(
-            f"BEGIN;\n{body}\nPRAGMA user_version = {number};\nCOMMIT;"
-        )
+        try:
+            conn.executescript(
+                f"BEGIN;\n{body}\nPRAGMA user_version = {number};\nCOMMIT;"
+            )
+        except Exception:
+            conn.rollback()
+            raise
