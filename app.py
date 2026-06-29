@@ -18,7 +18,7 @@ from book_depository.db import (
     get_db,
     open_loans,
 )
-from book_depository.isbn import is_valid_isbn13, normalize_isbn
+from book_depository.isbn import is_valid_isbn13, normalize_isbn, to_isbn13
 from book_depository.metadata import Book, fetch_book_metadata
 
 # Show timestamped logs in the console. INFO for everything, DEBUG for our own
@@ -85,9 +85,9 @@ def lookup(raw_isbn: str):
     normalize -> validate -> fetch -> return. (The register flow that WRITES to the
     DB is a separate route you'll add later — see the README.)
     """
-    isbn = normalize_isbn(raw_isbn)
-    if not is_valid_isbn13(isbn):
-        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
 
     book = fetch_book_metadata(isbn)
     if book is None:
@@ -98,9 +98,9 @@ def lookup(raw_isbn: str):
 
 @app.post("/api/register/<raw_isbn>")
 def register(raw_isbn: str):
-    isbn = normalize_isbn(raw_isbn)
-    if not is_valid_isbn13(isbn):
-        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
 
     # `?confirm=true` means the user already saw the "add a copy?" dialog and said yes.
     confirm = request.args.get("confirm") == "true"
@@ -129,6 +129,10 @@ def register(raw_isbn: str):
                 meta = fetch_book_metadata(isbn)
             if meta is None:
                 abort(404, "no book is found online")
+            # Always store under the validated/converted ISBN-13, never the
+            # client-supplied one — keeps the key consistent with de-dup above
+            # and with borrow/return (which also convert to ISBN-13).
+            meta.isbn = isbn
             add_book(conn, meta)
             backup_db(conn, BACKUP_DIR)
             return jsonify(status="added", book=meta.to_dict())
@@ -151,9 +155,9 @@ def book_lookup(raw_isbn: str):
     DB lookup for borrow/return — NO network call (metadata was cached at register).
     Returns the book AND its open loans (the return screen lists those to pick from).
     """
-    isbn = normalize_isbn(raw_isbn)
-    if not is_valid_isbn13(isbn):
-        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
     conn = get_db(DEFAULT_OWNER)
     try:
         row = find_book_by_isbn(conn, isbn)
@@ -171,9 +175,9 @@ def borrow(raw_isbn: str):
     """
     Borrow a copy under a minimal borrower label. JSON body: {"borrower": ...}.
     """
-    isbn = normalize_isbn(raw_isbn)
-    if not is_valid_isbn13(isbn):
-        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
     conn = get_db(DEFAULT_OWNER)
     try:
         row = find_book_by_isbn(conn, isbn)
@@ -198,9 +202,9 @@ def return_book_route(raw_isbn: str):
     """
     Close a specific open loan the user picked. JSON body: {"loan_id": ...}.
     """
-    isbn = normalize_isbn(raw_isbn)
-    if not is_valid_isbn13(isbn):
-        abort(400, description=f"Not a valid ISBN-13: {raw_isbn!r}")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
     conn = get_db(DEFAULT_OWNER)
     try:
         loan_id = (request.get_json(silent=True) or {}).get("loan_id")
