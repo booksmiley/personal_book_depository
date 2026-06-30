@@ -160,3 +160,7 @@ bucket is ever lost. Free-tier cold starts take ~30–60 s after idle.
 | `BOOK_DATA_DIR` · `BOOK_BACKUP_DIR` | SQLite dir (`/data` in Docker) · backup dir |
 | `R2_BUCKET` · `R2_ENDPOINT` | Litestream bucket · S3 endpoint |
 | `LITESTREAM_ACCESS_KEY_ID` · `LITESTREAM_SECRET_ACCESS_KEY` | R2/B2 credentials |
+
+## License
+
+Licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE).
