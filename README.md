@@ -20,7 +20,7 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
   collection page.
 - **Themes** — `apple`, `win95`, `terminal`.
 - **Durable on Render** — Litestream replicates SQLite to object storage; a JSON
-  event log is a second safety net.
+  event log is a second safety net (Render logs, plus dated files locally).
 - **Auth** — optional site-wide password, plus a separate admin password for edits.
 
 ## Architecture
@@ -138,7 +138,7 @@ bucket is ever lost. Free-tier cold starts take ~30–60 s after idle.
 
 | Field | Default | Purpose |
 |-------|---------|---------|
-| `data_dir` | `~/.book_depository/data` | Where the SQLite file lives |
+| `data_dir` | *(blank = project `data/`)* | SQLite file + dated ledger logs; set a path to store elsewhere |
 | `backup_dir` | *(blank)* | iCloud (or any dir) for snapshots; blank = off |
 | `google_books_api_key` | *(blank)* | Improves metadata |
 | `title` | `"My Library"` | Page heading / tab title |
