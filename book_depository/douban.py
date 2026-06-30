@@ -16,8 +16,11 @@ import re
 
 from bs4 import BeautifulSoup
 
+from book_depository import throttle
+
 log = logging.getLogger(__name__)
 
+_HOST = "book.douban.com"
 _URL = "https://book.douban.com/isbn/{isbn}"
 _HEADERS = {
     "User-Agent": (
@@ -36,6 +39,7 @@ def fetch_douban_metadata(isbn: str) -> dict | None:
     """
     import requests  # local import keeps startup fast when unused
 
+    throttle.wait(_HOST)  # space out hits so Douban doesn't rate-limit / block us
     try:
         resp = requests.get(
             _URL.format(isbn=isbn),
