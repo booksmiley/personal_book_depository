@@ -292,6 +292,7 @@ button:disabled { opacity: 0.45; cursor: default; }
   background: var(--silver);
   border: 2px solid; border-color: var(--hi) var(--sh) var(--sh) var(--hi);
 }
+.column-panel[hidden] { display: none; }  /* let the hidden attribute win over display:flex */
 .column-opt { font-size: 0.72rem; color: var(--dk); display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
 .col-edit-row { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
 .col-edit-row span { width: 5.5em; flex-shrink: 0; font-size: 0.72rem; }

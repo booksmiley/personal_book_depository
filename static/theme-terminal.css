@@ -259,6 +259,7 @@ button:disabled { opacity: 0.3; cursor: default; }
   padding: 0.6rem 0.75rem; margin-bottom: 0.6rem;
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
 }
+.column-panel[hidden] { display: none; }  /* let the hidden attribute win over display:flex */
 .column-opt { font-size: 0.78rem; color: var(--text); display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; user-select: none; }
 .col-edit-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.15rem 0; }
 .col-edit-row span { width: 5.5em; flex-shrink: 0; color: var(--dim); font-size: 0.78rem; }
