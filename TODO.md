@@ -21,8 +21,24 @@ Stack: Python + Flask + stdlib sqlite3 (DB-per-owner). Frontend = zero-build JS 
   one on failure). `0001` mirrors the shipped schema with `IF NOT EXISTS` so existing
   DBs stamp forward with no data loss. Adding a column = drop a new file, deploy.
   Verified on both fresh and legacy-with-data DBs.
-- **Deploy**: live on Render (gunicorn, `render.yaml`); phone tested over HTTPS.
-  Free tier = data EPHEMERAL (no disk).
+- **Deploy**: live on Render via **Docker** (`Dockerfile` + `render.yaml` Blueprint),
+  gunicorn `--workers 1`; phone tested over HTTPS.
+- **Durable persistence (Litestream)**: Render's free disk is ephemeral, so Litestream
+  runs in the container — restores the SQLite DB from S3-compatible object storage
+  (Cloudflare R2) on boot, then streams the WAL up continuously. Bucket = source of
+  truth, Render disk = working copy. `get_db()` enables WAL + `busy_timeout`. Config in
+  `litestream.yml`; boot/replicate in `run.sh`. R2 creds via env vars
+  (`R2_BUCKET`, `R2_ENDPOINT`, `LITESTREAM_ACCESS_KEY_ID/SECRET`). **Deployed & verified
+  live** (snapshot + WAL segments writing to R2; survives redeploy/spin-down). Sits well
+  inside R2's free tier.
+- **Reconstruction event log (`ledger.py`)**: every mutation emits one JSON `LEDGER`
+  line (`book_added` / `copy_added` / `borrowed` / `returned`, with `loan_id`) to the
+  app log — an independent second copy that lands in Render's logs, separate from the
+  R2 backup, so the two fail independently. Replaying the log rebuilds the DB. Note:
+  Render free-tier log retention is limited; add a log drain for indefinite history.
+- **ISBN-10 support**: `to_isbn13()` front door coerces ISBN-10 (incl. `X` check digit,
+  dashes/spaces) → canonical ISBN-13 at every route, so old 10-digit books work with no
+  schema change. `register()` always stores the validated/converted ISBN-13.
 - **Local run for phone**: `run_local.py` reads `local_config/config.yml` (git-ignored),
   serves HTTPS via an **openssl self-signed cert** (NOT the `cryptography` pkg — it fails
   to build from Rust source here). Data dir is configurable via `BOOK_DATA_DIR`, set to
@@ -77,6 +93,10 @@ shared library needs a shared source of truth. Single-station (one device = the
 terminal) resolves this without a server.
 
 ### Later
-- Add borrower `contact` (phone/email) once secure storage exists.
-- Render durable data: paid disk (template in `render.yaml`) or Fly volume.
+- Add borrower `contact` (phone/email) — migration `db_lib/0002` already adds a
+  `language` column as the pattern; a `contact` column would follow the same path.
 - Overdue tracking / "who has what" view (derivable from `loans`).
+- Log drain (e.g. Better Stack free tier) for indefinite `LEDGER` retention beyond
+  Render's free-tier log window.
+- More complete ISBN/metadata coverage (the second of the two church-readiness goals;
+  durable storage is now done).
