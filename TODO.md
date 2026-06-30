@@ -57,10 +57,18 @@ Stack: Python + Flask + stdlib sqlite3 (DB-per-owner). Frontend = zero-build JS 
 - **Snap button**: still-frame barcode decode for shaky-hand / low-light situations.
   Freezes the video frame onto a hidden canvas and runs `BarcodeDetector` on it.
 - **Manual ISBN entry**: text field below the camera for typing/pasting an ISBN directly.
-- **Douban metadata source**: scrapes `book.douban.com/isbn/{isbn}` for Chinese-language
-  books (title, author in Chinese characters). Cover images routed through Google Books /
-  Open Library to avoid Douban's hotlink block. Source priority: Douban → Google Books →
-  Open Library → NLC (HTTP/3 only, gracefully skipped).
+- **Metadata sources & coverage**: fallback chain is
+  **ISBNnet → Douban → Google Books → Open Library → NLC**.
+  - **ISBNnet** (`isbnnet.py`): Taiwan's NCL registry (全國新書資訊網). Authoritative
+    Traditional Chinese for Taiwan ISBNs (groups 957/986/626/627) — fixes cases where
+    Google returned wrong Simplified titles. Session + CSRF POST; ROC→Gregorian year.
+    Gated by Taiwan prefix so it's an instant no-op (no network) for other ISBNs, which
+    is why it's safe to run **first**.
+  - **Douban**: scrapes `book.douban.com/isbn/{isbn}` for mainland Chinese books.
+  - **Google Books**: hardened with a pinned `country` (default US, `GOOGLE_BOOKS_COUNTRY`)
+    and an ISBN-10 retry for volumes indexed only under the 10-digit form.
+  - Covers for the scraped sources route through Google Books / Open Library (Douban
+    hotlink-blocks; ISBNnet covers are unreliable). NLC = HTTP/3 only, gracefully skipped.
 - **UI themes**: three themes selectable via `BOOK_THEME` env var (or `theme:` in
   `local_config/config.yml`):
   - `apple` — clean white cards, SF Pro/system font, blue accents (default)
@@ -98,5 +106,6 @@ terminal) resolves this without a server.
 - Overdue tracking / "who has what" view (derivable from `loans`).
 - Log drain (e.g. Better Stack free tier) for indefinite `LEDGER` retention beyond
   Render's free-tier log window.
-- More complete ISBN/metadata coverage (the second of the two church-readiness goals;
-  durable storage is now done).
+- Metadata coverage: ISBNnet (Taiwan) + Google Books hardening done. Remaining gaps to
+  watch — Hong Kong books and mainland books absent from Douban. Add a source if real
+  misses show up (collect failing ISBNs from use).
