@@ -62,6 +62,10 @@ SQLite `ADD COLUMN` can't add `NOT NULL` (without a constant default), `UNIQUE`,
 `PRIMARY KEY` — for those, rebuild the table inside the migration. Snapshot real data
 before the first run.
 
+After adding a new field or source, backfill existing rows with
+`python backfill_metadata.py` (re-queries the combined sources, fills **empty** fields
+only; `--dry-run` to preview).
+
 ## Run on your laptop
 
 ```bash
@@ -129,9 +133,11 @@ Register a book, then check: a `LEDGER {...}` line in Render **Logs**, a `lib_ad
 path in your R2 bucket, and that the book survives a **Manual Deploy** (restored from
 R2).
 
-**Notes:** runs `gunicorn --workers 1` (Litestream wants a single writer). The
-`LEDGER` log lines are an independent record you can replay to rebuild the DB if the
-bucket is ever lost. Free-tier cold starts take ~30–60 s after idle.
+**Notes:** runs `gunicorn --workers 1 --threads 8` — one process keeps Litestream's
+single writer, while threads serve requests concurrently so a slow metadata lookup
+doesn't block borrow/return. The `LEDGER` log lines are an independent record you can
+replay to rebuild the DB if the bucket is ever lost. Free-tier cold starts take
+~30–60 s after idle.
 
 ## Config reference
 

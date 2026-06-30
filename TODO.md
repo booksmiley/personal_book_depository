@@ -15,6 +15,16 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   otherwise). Per-host scraper throttle (`SCRAPER_MIN_INTERVAL`). NLC dropped (HTTP/3).
 - **Register / borrow / return**: per-book copies; each borrow is one named loan; return
   closes the picked loan; counts updated atomically. `/api/lookup|register|book|borrow|return`.
+- **Concurrency**: borrow/return use atomic conditional `UPDATE`s — no over-borrow or
+  double-return (tested with 20 racing threads). Register race caught (`IntegrityError`
+  → graceful "exists"); migration race fixed (`BEGIN IMMEDIATE` + re-check `user_version`
+  under the lock). Server runs `--threads` so a slow metadata lookup (network I/O releases
+  the GIL) doesn't block borrow/return — verified a 2s lookup didn't stall a concurrent
+  request. (Threads, not async: lookups are I/O-bound, so async would be a big rewrite for
+  no gain at this scale.)
+- **Backfill tool** (`backfill_metadata.py`): re-query every book via the combined sources
+  to fill EMPTY fields (e.g. `language` on rows registered before it existed); never
+  overwrites existing values. `--dry-run` / `--fields` / `--limit`.
 - **Collection**: grid or list; tap to borrow/return inline; pick & reorder columns
   (from DB keys, friendly order, persisted); click a header to sort asc/desc.
 - **Admin** (`BOOK_ADMIN_PASSWORD`; `BOOK_ADMIN_OPEN` = trusted local, on by default in
@@ -22,7 +32,8 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
 - **Schema migrations** (`db_lib/NNNN_*.sql`): applied per-connection, tracked by
   `PRAGMA user_version`, each in one transaction. Add a column = drop a file, deploy.
 - **Durable persistence (Litestream)**: deployed on Render via Docker; replicates SQLite
-  → Cloudflare R2, restores on boot (WAL mode, `--workers 1`). Verified live.
+  → Cloudflare R2, restores on boot (WAL mode, `--workers 1 --threads 8` — one process
+  keeps Litestream's single writer; threads serve concurrent requests). Verified live.
 - **Reconstruction log (`ledger.py`)**: one JSON `LEDGER` line per mutation → Render logs
   (independent of R2). Local runs also write date-split `ledger-YYYY-MM-DD.log` to the data dir.
 - **Backups**: `backup_db()` snapshots the SQLite file to `backup_dir` (iCloud) after each
@@ -37,9 +48,21 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
 
 ## Backlog
 
-- **Mobile app** (not started): PWA add-to-home (~1 day) / Raspberry-Pi-at-church local
-  server (no cloud) / Capacitor native wrap. Tension: a shared library needs a shared
-  source of truth, so "fully local" implies a single-station design.
+- **Wrap as a real app** (discuss before building): you can't "wrap" Flask — a wrapper
+  packages the JS frontend, so the Python backend has to live somewhere. Three levels:
+  1. **PWA** add-to-home (~1 day) — installable, looks native; **data stays on the
+     server** (Render/R2). No store, no rewrite.
+  2. **Capacitor → Render** — real iOS/Android app (App Store), native camera/barcode;
+     webview still calls Render, so **data stays on the server**.
+  3. **Self-contained app** — port the backend logic to JS, **on-device SQLite** (iOS
+     app container, iCloud-backed; Android app-private). Best fit for *personal
+     single-device* use (no shared-source-of-truth tension). ~1–2 weeks; the scrapers
+     (Douban/ISBNnet) need Capacitor native HTTP to dodge browser CORS. Don't embed
+     Python on mobile (BeeWare/Kivy immature, doesn't fit the web frontend).
+  - Also viable without an app: Raspberry-Pi-at-the-venue local server (no cloud);
+    remote access to a home server via Tailscale (private) or Cloudflare Tunnel (public).
+  - Key tension: a *shared* library needs a shared source of truth, so "fully local data"
+    only fully works in a single-station / single-device design.
 - **Later**: borrower `contact` field (follow the `language` migration pattern); overdue /
   "who has what" view; log drain for indefinite `LEDGER` retention; watch metadata gaps
   (HK books, mainland titles absent from Douban — add a source if real misses show up).
