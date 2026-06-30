@@ -1,7 +1,7 @@
 # Personal Book Depository
 
-A lean library app for a small church. Scan a book's barcode with your phone →
-register, borrow, or return it. Runs in the browser, no app install.
+A lean library app for a personal book collection or a community library. Scan a book's barcode with your phone →
+register, borrow, or return it. Runs in the browser, no app installation needed.
 
 Stack: Python + Flask + SQLite, zero-build JS frontend.
 
