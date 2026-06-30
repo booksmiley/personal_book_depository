@@ -28,8 +28,10 @@ def main() -> None:
     cfg = load_config()
     server = cfg.get("server", {})
 
-    # Resolve and create the safe data directory (outside the repo).
-    data_dir = os.path.expanduser(cfg.get("data_dir", "~/.book_depository/data"))
+    # Resolve and create the data directory. Default is the project's data/ dir
+    # (git-ignored); set data_dir in config.yml to store it elsewhere.
+    default_data_dir = str(Path(__file__).resolve().parent / "data")
+    data_dir = os.path.expanduser(cfg.get("data_dir") or default_data_dir)
     Path(data_dir).mkdir(parents=True, exist_ok=True)
 
     # IMPORTANT: set env BEFORE importing the app, because db.py and metadata.py
@@ -52,6 +54,11 @@ def main() -> None:
     os.environ["BOOK_ADMIN_OPEN"] = "1" if admin_open else "0"
 
     from app import app  # noqa: E402 — must come after env is set
+    from book_depository.ledger import enable_file_logging  # noqa: E402
+
+    # Persist the reconstruction log locally (date-split files in the data dir). On
+    # Render these lines go to the platform logs instead, so this is local-only.
+    enable_file_logging(data_dir)
 
     # Decide the TLS context.
     https = server.get("https", {})

@@ -20,7 +20,8 @@ Reconstruction sketch (replay in timestamp order):
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from pathlib import Path
 
 # Grep this marker out of the Render logs to extract the full event stream.
 LEDGER_MARKER = "LEDGER"
@@ -39,6 +40,46 @@ def log_event(action: str, **fields) -> None:
         _log.info("%s %s", LEDGER_MARKER, line)
     except Exception:  # pragma: no cover - defensive only
         logging.getLogger(__name__).exception("failed to log ledger event %r", action)
+
+
+class _DailyFileHandler(logging.Handler):
+    """Write each event to ledger-YYYY-MM-DD.log, switching files when the date rolls
+    over. Ledger volume is tiny, so we just flush every line."""
+
+    def __init__(self, directory: Path):
+        super().__init__()
+        self._dir = directory
+        self._day = None
+        self._stream = None
+
+    def _today_stream(self):
+        today = date.today().isoformat()
+        if today != self._day:
+            if self._stream:
+                self._stream.close()
+            self._stream = open(self._dir / f"ledger-{today}.log", "a", encoding="utf-8")
+            self._day = today
+        return self._stream
+
+    def emit(self, record):
+        try:
+            stream = self._today_stream()
+            stream.write(self.format(record) + "\n")
+            stream.flush()
+        except Exception:
+            self.handleError(record)
+
+
+def enable_file_logging(directory) -> None:
+    """Persist ledger events to date-split files (ledger-YYYY-MM-DD.log) in `directory`.
+    For LOCAL runs only — on Render the same lines already land in the platform logs.
+    Console output is unaffected (this is an extra handler)."""
+    path = Path(directory).expanduser()
+    path.mkdir(parents=True, exist_ok=True)
+    handler = _DailyFileHandler(path)
+    handler.setFormatter(logging.Formatter("%(message)s"))  # one "LEDGER {json}" per line
+    _log.addHandler(handler)
+    _log.setLevel(logging.INFO)  # ensure ledger events pass to the handler
 
 
 def _now() -> str:
