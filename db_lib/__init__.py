@@ -31,27 +31,42 @@ def _migration_files() -> list[tuple[int, Path]]:
     return found
 
 
+def _statements(sql: str) -> list[str]:
+    """Split a migration file into individual statements. Our migrations are simple
+    DDL with no semicolons inside literals, so strip line comments and split on ';'."""
+    body = "\n".join(l for l in sql.splitlines() if not l.strip().startswith("--"))
+    return [s.strip() for s in body.split(";") if s.strip()]
+
+
 def run_migrations(conn: sqlite3.Connection) -> None:
-    """Apply any migration files newer than the DB's current user_version."""
-    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    """Apply any migration files newer than the DB's current user_version.
 
-    for number, path in _migration_files():
-        if number <= version:
-            continue
+    Concurrency-safe: a fast unlocked check skips the common already-migrated case,
+    then we take the write lock with BEGIN IMMEDIATE and RE-READ user_version inside
+    that lock before applying anything. So if two connections open a fresh DB at once,
+    only the one that wins the lock migrates; the other re-checks, finds it done, and
+    does nothing — no double-applied ALTER. The whole run is one transaction, so a
+    failure rolls back cleanly (SQLite DDL is transactional)."""
+    files = _migration_files()
+    current = conn.execute("PRAGMA user_version").fetchone()[0]
+    if not files or files[-1][0] <= current:
+        return  # nothing pending — don't even take the lock
 
-        # Wrap the file in one transaction so the DDL and the version bump commit
-        # together. SQLite DDL is transactional, so on success it's all-or-nothing.
-        #
-        # On failure we must roll back EXPLICITLY: executescript() leaves the
-        # transaction open when a statement raises, and — worse — the next
-        # executescript() begins with an implicit COMMIT that would finalize that
-        # half-applied migration. Rolling back here undoes the partial change so the
-        # next start retries cleanly from the same version.
-        body = path.read_text()
-        try:
-            conn.executescript(
-                f"BEGIN;\n{body}\nPRAGMA user_version = {number};\nCOMMIT;"
-            )
-        except Exception:
-            conn.rollback()
-            raise
+    prev_isolation = conn.isolation_level
+    conn.isolation_level = None  # manual transaction control
+    try:
+        conn.execute("BEGIN IMMEDIATE")  # acquire the write lock up front
+        version = conn.execute("PRAGMA user_version").fetchone()[0]  # re-check under lock
+        for number, path in files:
+            if number <= version:
+                continue
+            for statement in _statements(path.read_text()):
+                conn.execute(statement)
+            conn.execute(f"PRAGMA user_version = {number}")
+            version = number
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    finally:
+        conn.isolation_level = prev_isolation
