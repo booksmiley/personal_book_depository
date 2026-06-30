@@ -45,3 +45,7 @@ title: "My Library"
 #   win95    — silver desktop, 3-D beveled chrome, teal taskbar
 #   terminal — green phosphor on black, CRT scanlines, VT323 font
 theme: apple
+
+# Trusted-local admin: edit/delete records with no password (you own this machine).
+# Set to false to require the admin password locally too. Always off on Render.
+admin_open: true

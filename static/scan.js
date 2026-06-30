@@ -253,6 +253,8 @@ function setCollectionView(view) {
   localStorage.setItem("collectionView", view);
   viewGridBtn.classList.toggle("active", view === "grid");
   viewListBtn.classList.toggle("active", view === "list");
+  if (columnsBtn) columnsBtn.hidden = view !== "list"; // columns only apply to the table
+  if (view !== "list" && columnPanel) columnPanel.hidden = true;
   if (cachedBooks) renderCollection(cachedBooks);
 }
 
@@ -262,6 +264,111 @@ viewListBtn.addEventListener("click", () => setCollectionView("list"));
 // Sync toggle button state on load.
 viewGridBtn.classList.toggle("active", collectionView === "grid");
 viewListBtn.classList.toggle("active", collectionView === "list");
+
+// --- Column selector (everyone) + admin mode ---
+const columnsBtn = document.getElementById("columns-btn");
+const columnPanel = document.getElementById("column-panel");
+const adminBtn = document.getElementById("admin-btn");
+
+// Columns we never offer (internal id / non-textual).
+const HIDDEN_COLUMNS = new Set(["book_id", "cover_url"]);
+// Pretty labels; any column not listed falls back to its raw DB name.
+const COLUMN_LABELS = {
+  isbn: "ISBN", title: "Title", author: "Author", publisher: "Publisher",
+  year: "Year", language: "Language", source: "Source",
+  total_count: "Copies", available: "Available",
+};
+const DEFAULT_COLUMNS = ["title", "author", "year", "publisher", "available"];
+
+let visibleColumns =
+  JSON.parse(localStorage.getItem("collectionColumns") || "null") || DEFAULT_COLUMNS;
+
+// Options come straight from the DB row keys (a future migration column appears
+// automatically), minus the hidden internal ones.
+function availableColumns(books) {
+  if (!books || !books.length) return [];
+  return Object.keys(books[0]).filter((k) => !HIDDEN_COLUMNS.has(k));
+}
+const colLabel = (key) => COLUMN_LABELS[key] || key;
+
+// User's choice intersected with what the DB actually has (preserve order); fall
+// back to defaults if that leaves nothing.
+function effectiveColumns(books) {
+  const have = new Set(availableColumns(books));
+  const cols = visibleColumns.filter((c) => have.has(c));
+  return cols.length ? cols : DEFAULT_COLUMNS.filter((c) => have.has(c));
+}
+
+function buildColumnPanel(books) {
+  const active = new Set(effectiveColumns(books));
+  columnPanel.innerHTML = availableColumns(books)
+    .map(
+      (c) =>
+        `<label class="column-opt"><input type="checkbox" value="${esc(c)}" ${
+          active.has(c) ? "checked" : ""
+        }/> ${esc(colLabel(c))}</label>`,
+    )
+    .join("");
+  columnPanel.querySelectorAll("input[type=checkbox]").forEach((cb) =>
+    cb.addEventListener("change", () => {
+      const chosen = [...columnPanel.querySelectorAll("input:checked")].map((i) => i.value);
+      visibleColumns = chosen.length ? chosen : DEFAULT_COLUMNS.slice();
+      localStorage.setItem("collectionColumns", JSON.stringify(visibleColumns));
+      if (cachedBooks) renderCollection(cachedBooks);
+    }),
+  );
+}
+
+if (columnsBtn) {
+  columnsBtn.hidden = collectionView !== "list";
+  columnsBtn.addEventListener("click", () => {
+    columnPanel.hidden = !columnPanel.hidden;
+    if (!columnPanel.hidden && cachedBooks) buildColumnPanel(cachedBooks);
+  });
+}
+
+// Admin: in "open" mode (trusted local run) admin is always on, no password. Otherwise
+// the password is held in sessionStorage for the tab and sent as a header on
+// privileged requests, verified server-side.
+const adminOpen = document.body.dataset.adminOpen === "true";
+let adminPassword = sessionStorage.getItem("adminPassword") || "";
+const isAdmin = () => adminOpen || !!adminPassword;
+const adminHeaders = () => (adminPassword ? { "X-Admin-Password": adminPassword } : {});
+
+function refreshAdminBtn() {
+  if (!adminBtn) return;
+  adminBtn.textContent = isAdmin() ? "🔓 Admin ✓" : "🔒 Admin";
+  adminBtn.classList.toggle("active", isAdmin());
+}
+refreshAdminBtn();
+
+// Open mode needs no unlock button behaviour — admin is already active.
+if (adminBtn && !adminOpen) {
+  adminBtn.addEventListener("click", async () => {
+    if (isAdmin()) {
+      adminPassword = "";
+      sessionStorage.removeItem("adminPassword");
+      refreshAdminBtn();
+      if (cachedBooks) renderCollection(cachedBooks);
+      return;
+    }
+    const pw = window.prompt("Admin password:"); // collection view has no live camera
+    if (!pw) return;
+    try {
+      const resp = await fetch("/api/admin/check", {
+        method: "POST",
+        headers: { "X-Admin-Password": pw },
+      });
+      if (!resp.ok) throw new Error("rejected");
+      adminPassword = pw;
+      sessionStorage.setItem("adminPassword", pw);
+      refreshAdminBtn();
+      if (cachedBooks) renderCollection(cachedBooks);
+    } catch {
+      window.alert("Admin password rejected.");
+    }
+  });
+}
 
 async function loadCollection() {
   collectionCountEl.textContent = "";
@@ -314,27 +421,14 @@ function renderGrid(books) {
 }
 
 function renderList(books) {
+  const cols = effectiveColumns(books);
+  const head = cols.map((c) => `<th>${esc(colLabel(c))}</th>`).join("");
   const rows = books
-    .map((book) => {
-      const avail = book.available ?? 0;
-      const total = book.total_count ?? 1;
-      const badgeClass = avail > 0 ? "badge-ok" : "badge-out";
-      const badgeLabel = avail > 0 ? `${avail}/${total}` : "Out";
-      return `
-        <tr>
-          <td>${esc(book.title || "(no title)")}</td>
-          <td>${esc(book.author || "")}</td>
-          <td>${esc(book.year || "")}</td>
-          <td>${esc(book.publisher || "")}</td>
-          <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-        </tr>`;
-    })
+    .map((book) => `<tr>${cols.map((c) => `<td>${cellHtml(book, c)}</td>`).join("")}</tr>`)
     .join("");
   collectionBodyEl.innerHTML = `
     <table class="book-list">
-      <thead><tr>
-        <th>Title</th><th>Author</th><th>Year</th><th>Publisher</th><th>Status</th>
-      </tr></thead>
+      <thead><tr>${head}</tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   collectionBodyEl.querySelectorAll("tbody tr").forEach((row, i) => {
@@ -343,6 +437,19 @@ function renderList(books) {
       openCollectionAction(books[i], row, "list");
     });
   });
+}
+
+// One table cell. "available" renders as a coloured availability badge; everything
+// else is its plain (escaped) DB value.
+function cellHtml(book, col) {
+  if (col === "available") {
+    const avail = book.available ?? 0;
+    const total = book.total_count ?? 1;
+    const cls = avail > 0 ? "badge-ok" : "badge-out";
+    return `<span class="badge ${cls}">${avail > 0 ? `${avail}/${total}` : "Out"}</span>`;
+  }
+  const v = book[col];
+  return esc(v == null ? "" : String(v));
 }
 
 // --- Collection borrow/return action ---
@@ -373,9 +480,10 @@ async function openCollectionAction(book, el, view) {
 
   let container;
   if (view === "list") {
+    const span = effectiveColumns(cachedBooks).length;
     const actionTr = document.createElement("tr");
     actionTr.className = "col-action-row";
-    actionTr.innerHTML = `<td colspan="5" class="col-action-cell"><em>Loading…</em></td>`;
+    actionTr.innerHTML = `<td colspan="${span}" class="col-action-cell"><em>Loading…</em></td>`;
     target.insertAdjacentElement("afterend", actionTr);
     container = actionTr.querySelector(".col-action-cell");
   } else {
@@ -403,6 +511,7 @@ function fillCollectionActionUI(book, openLoans, container) {
         ? `<button class="col-borrow-btn">Borrow</button>`
         : `<span class="col-unavail">No copies available</span>`}
       ${openLoans.length > 0 ? `<button class="col-return-btn">Return</button>` : ""}
+      ${isAdmin() ? `<button class="col-edit-btn">Edit</button><button class="col-delete-btn">Delete</button>` : ""}
       <button class="col-cancel-btn">Cancel</button>
     </div>
     <div class="col-form"></div>`;
@@ -410,6 +519,48 @@ function fillCollectionActionUI(book, openLoans, container) {
   const formEl = container.querySelector(".col-form");
 
   container.querySelector(".col-cancel-btn").addEventListener("click", closeCollectionAction);
+
+  // --- Admin: edit ---
+  container.querySelector(".col-edit-btn")?.addEventListener("click", () => {
+    const fields = [
+      ["title", "Title"], ["author", "Author"], ["publisher", "Publisher"],
+      ["year", "Year"], ["language", "Language"], ["cover_url", "Cover URL"],
+      ["total_count", "Copies"],
+    ];
+    formEl.innerHTML =
+      fields
+        .map(
+          ([k, label]) =>
+            `<label class="col-edit-row"><span>${label}</span>
+               <input class="col-name-input" data-field="${k}" value="${esc(
+              book[k] == null ? "" : String(book[k]),
+            )}" /></label>`,
+        )
+        .join("") + `<button class="col-confirm-btn">Save</button>`;
+    formEl.querySelector(".col-confirm-btn").addEventListener("click", async () => {
+      const payload = {};
+      formEl.querySelectorAll("input[data-field]").forEach((inp) => {
+        payload[inp.dataset.field] = inp.value;
+      });
+      try {
+        await patchJson(`/api/book/${book.isbn}`, payload);
+        await loadCollection();
+      } catch (err) {
+        formEl.insertAdjacentHTML("beforeend", `<p class="col-err">${esc(err.message)}</p>`);
+      }
+    });
+  });
+
+  // --- Admin: delete ---
+  container.querySelector(".col-delete-btn")?.addEventListener("click", async () => {
+    if (!window.confirm(`Delete "${book.title}" and its loan history? This cannot be undone.`)) return;
+    try {
+      await deleteReq(`/api/book/${book.isbn}`);
+      await loadCollection();
+    } catch (err) {
+      formEl.innerHTML = `<p class="col-err">${esc(err.message)}</p>`;
+    }
+  });
 
   container.querySelector(".col-borrow-btn")?.addEventListener("click", () => {
     formEl.innerHTML = `
@@ -473,6 +624,25 @@ async function postJson(url, body) {
     headers: body ? { "Content-Type": "application/json" } : {},
     body: body ? JSON.stringify(body) : undefined,
   });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
+  return data;
+}
+
+// Admin-only mutations — carry the admin password header.
+async function patchJson(url, body) {
+  const resp = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...adminHeaders() },
+    body: JSON.stringify(body),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
+  return data;
+}
+
+async function deleteReq(url) {
+  const resp = await fetch(url, { method: "DELETE", headers: { ...adminHeaders() } });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
   return data;

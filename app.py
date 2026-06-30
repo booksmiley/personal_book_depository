@@ -1,6 +1,7 @@
 """Flask entry point — thin glue. The real logic lives in book_depository/."""
 
 import base64
+import hmac
 import logging
 import os
 
@@ -8,15 +9,18 @@ from flask import Flask, Response, abort, jsonify, render_template, request
 
 from book_depository.db import (
     BACKUP_DIR,
+    EDITABLE_FIELDS,
     add_book,
     add_copy,
     backup_db,
     borrow_book,
     close_loan,
+    delete_book,
     find_book_by_isbn,
     get_all_books,
     get_db,
     open_loans,
+    update_book,
 )
 from book_depository.isbn import is_valid_isbn13, normalize_isbn, to_isbn13
 from book_depository.ledger import log_event
@@ -41,6 +45,22 @@ _VALID_THEMES = {"apple", "win95", "terminal"}
 # Set BOOK_PASSWORD on Render to password-protect the whole site.
 # Leave unset (or empty) for local LAN use where the network is the perimeter.
 BOOK_PASSWORD = os.environ.get("BOOK_PASSWORD", "")
+# A SEPARATE, higher-tier secret for editing/deleting records. Unset = admin
+# features disabled entirely (the buttons don't even render).
+ADMIN_PASSWORD = os.environ.get("BOOK_ADMIN_PASSWORD", "")
+# "Trusted local" mode: grant admin to everyone with no password. run_local.py turns
+# this ON by default (you own the machine). NEVER set it on a public deploy.
+ADMIN_OPEN = os.environ.get("BOOK_ADMIN_OPEN", "").lower() in ("1", "true", "yes", "on")
+
+
+def is_admin() -> bool:
+    """True if admin is open (trusted local) or the request carries the right header."""
+    if ADMIN_OPEN:
+        return True
+    if not ADMIN_PASSWORD:
+        return False
+    supplied = request.headers.get("X-Admin-Password", "")
+    return hmac.compare_digest(supplied, ADMIN_PASSWORD)  # constant-time compare
 
 
 @app.before_request
@@ -64,6 +84,8 @@ def check_auth():
 
 
 @app.errorhandler(400)
+@app.errorhandler(401)
+@app.errorhandler(403)
 @app.errorhandler(404)
 @app.errorhandler(409)
 def json_error(err):
@@ -75,7 +97,21 @@ def json_error(err):
 def index():
     """Serve the scan page (camera lives in the browser)."""
     theme = THEME if THEME in _VALID_THEMES else "apple"
-    return render_template("scan.html", theme=theme, title=TITLE)
+    return render_template(
+        "scan.html",
+        theme=theme,
+        title=TITLE,
+        admin_enabled=ADMIN_OPEN or bool(ADMIN_PASSWORD),
+        admin_open=ADMIN_OPEN,
+    )
+
+
+@app.post("/api/admin/check")
+def admin_check():
+    """Validate an admin password so the frontend can unlock edit/delete."""
+    if not is_admin():
+        abort(401, "Wrong admin password.")
+    return jsonify(ok=True)
 
 
 @app.get("/api/lookup/<raw_isbn>")
@@ -233,6 +269,47 @@ def return_book_route(raw_isbn: str):
         conn.close()
 
     return jsonify(status="returned", book=dict(fresh))
+
+
+@app.patch("/api/book/<raw_isbn>")
+def edit_book(raw_isbn: str):
+    """Admin: edit a book's metadata / copy count. JSON body = fields to change."""
+    if not is_admin():
+        abort(403, "Admin access required.")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+    payload = request.get_json(silent=True) or {}
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        updated = update_book(conn, isbn, payload)
+        if updated is None:
+            abort(404, "This book isn't in the library.")
+        changed = {k: payload[k] for k in payload if k in EDITABLE_FIELDS}
+        log_event("book_edited", isbn=isbn, fields=changed)
+        backup_db(conn, BACKUP_DIR)
+    finally:
+        conn.close()
+    return jsonify(status="updated", book=dict(updated))
+
+
+@app.delete("/api/book/<raw_isbn>")
+def remove_book(raw_isbn: str):
+    """Admin: delete a book and its loan history."""
+    if not is_admin():
+        abort(403, "Admin access required.")
+    isbn = to_isbn13(raw_isbn)
+    if isbn is None:
+        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        if not delete_book(conn, isbn):
+            abort(404, "This book isn't in the library.")
+        log_event("book_deleted", isbn=isbn)
+        backup_db(conn, BACKUP_DIR)
+    finally:
+        conn.close()
+    return jsonify(status="deleted", isbn=isbn)
 
 
 @app.get("/api/books")

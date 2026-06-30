@@ -46,6 +46,10 @@ def main() -> None:
     os.environ["BOOK_THEME"] = theme
     title = cfg.get("title", "Library")
     os.environ["BOOK_TITLE"] = title
+    # Trusted local run: admin (edit/delete) is ON by default, no password. Set
+    # `admin_open: false` in config.yml to require the admin password locally too.
+    admin_open = cfg.get("admin_open", True)
+    os.environ["BOOK_ADMIN_OPEN"] = "1" if admin_open else "0"
 
     from app import app  # noqa: E402 — must come after env is set
 

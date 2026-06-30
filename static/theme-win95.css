@@ -284,3 +284,17 @@ button:disabled { opacity: 0.45; cursor: default; }
 .col-loan-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 2px 0; border-top: 1px solid var(--sh); font-size: 0.72rem; }
 .col-unavail { font-size: 0.72rem; color: var(--sh); }
 .col-err { font-size: 0.72rem; color: #c00000; margin: 0; }
+
+/* Column selector + admin edit/delete */
+.column-panel {
+  display: flex; flex-wrap: wrap; gap: 3px 12px;
+  padding: 6px 8px; margin-bottom: 6px;
+  background: var(--silver);
+  border: 2px solid; border-color: var(--hi) var(--sh) var(--sh) var(--hi);
+}
+.column-opt { font-size: 0.72rem; color: var(--dk); display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.col-edit-row { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+.col-edit-row span { width: 5.5em; flex-shrink: 0; font-size: 0.72rem; }
+.col-edit-row .col-name-input { flex: 1; }
+.col-edit-btn, .col-delete-btn { font-size: 0.72rem; padding: 3px 8px; margin: 0; }
+.col-delete-btn { color: #c00000; font-weight: bold; }

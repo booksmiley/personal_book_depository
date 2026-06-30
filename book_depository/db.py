@@ -83,6 +83,50 @@ def add_copy(conn: sqlite3.Connection, isbn: str) -> int:
     return cur.rowcount
 
 
+# Fields an admin may edit. NOT isbn (the key) and NOT available (derived from
+# total_count minus open loans). These names are a fixed whitelist — never user
+# input — so it's safe to interpolate them into the UPDATE column list below.
+EDITABLE_FIELDS = ("title", "author", "publisher", "year", "language", "cover_url", "total_count")
+
+
+def update_book(conn: sqlite3.Connection, isbn: str, fields: dict):
+    """Update whitelisted fields of a book. If total_count changes, recompute
+    available = total_count - (open loans). Returns the fresh row, or None if the
+    book doesn't exist."""
+    book = find_book_by_isbn(conn, isbn)
+    if book is None:
+        return None
+
+    updates = {k: v for k, v in fields.items() if k in EDITABLE_FIELDS}
+    if not updates:
+        return book
+
+    if "total_count" in updates:
+        try:
+            total = max(0, int(updates["total_count"]))
+        except (TypeError, ValueError):
+            total = book["total_count"]
+        updates["total_count"] = total
+        out = len(open_loans(conn, book["book_id"]))
+        updates["available"] = max(0, total - out)  # keep availability consistent
+
+    columns = ", ".join(f"{k} = ?" for k in updates)  # keys are the whitelist above
+    conn.execute(f"UPDATE books SET {columns} WHERE isbn = ?", (*updates.values(), isbn))
+    conn.commit()
+    return find_book_by_isbn(conn, isbn)
+
+
+def delete_book(conn: sqlite3.Connection, isbn: str) -> bool:
+    """Delete a book and its loan history. Returns False if it wasn't found."""
+    book = find_book_by_isbn(conn, isbn)
+    if book is None:
+        return False
+    conn.execute("DELETE FROM loans WHERE book_id = ?", (book["book_id"],))
+    conn.execute("DELETE FROM books WHERE isbn = ?", (isbn,))
+    conn.commit()
+    return True
+
+
 def open_loans(conn: sqlite3.Connection, book_id: int):
     query_open_loan = """
         SELECT * from loans

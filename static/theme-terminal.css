@@ -252,3 +252,16 @@ button:disabled { opacity: 0.3; cursor: default; }
 .col-loan-row span { color: var(--dim); }
 .col-unavail { font-size: 0.78rem; color: var(--dim); }
 .col-err { font-size: 0.78rem; color: var(--red); margin: 0; }
+
+/* Column selector + admin edit/delete */
+.column-panel {
+  display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem;
+  padding: 0.6rem 0.75rem; margin-bottom: 0.6rem;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.column-opt { font-size: 0.78rem; color: var(--text); display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; user-select: none; }
+.col-edit-row { display: flex; align-items: center; gap: 0.4rem; margin: 0.15rem 0; }
+.col-edit-row span { width: 5.5em; flex-shrink: 0; color: var(--dim); font-size: 0.78rem; }
+.col-edit-row .col-name-input { flex: 1; }
+.col-edit-btn { border-color: var(--accent); color: var(--accent); font-size: 0.78rem; padding: 3px 10px; margin: 0; }
+.col-delete-btn { border-color: var(--red); color: var(--red); font-size: 0.78rem; padding: 3px 10px; margin: 0; }

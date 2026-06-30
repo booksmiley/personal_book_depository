@@ -6,7 +6,7 @@
     <title>{{ title }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='theme-' + theme + '.css') }}" />
   </head>
-  <body>
+  <body data-admin-open="{{ 'true' if admin_open else 'false' }}">
     <div class="scan-wrap">
       <h1>📚 {{ title }}</h1>
 
@@ -40,8 +40,11 @@
           <button id="view-grid-btn" class="view-btn active">⊞ Grid</button>
           <button id="view-list-btn" class="view-btn">≡ List</button>
         </div>
+        <button id="columns-btn" class="view-btn" hidden>▤ Columns</button>
+        {% if admin_enabled %}<button id="admin-btn" class="view-btn">🔒 Admin</button>{% endif %}
         <button id="reload-btn">↻ Reload</button>
       </div>
+      <div id="column-panel" class="column-panel" hidden></div>
       <div id="collection-body"></div>
     </section>
 
