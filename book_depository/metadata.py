@@ -14,10 +14,15 @@ from enum import Enum
 import requests
 
 from book_depository.douban import fetch_douban_metadata
+from book_depository.isbn import isbn13_to_isbn10
+from book_depository.isbnnet import fetch_isbnnet_metadata
 from book_depository.nlc import fetch_nlc_metadata
 
 log = logging.getLogger(__name__)
 GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
+# Google Books returns different (sometimes empty) results depending on the caller's
+# country; pin it so results are deterministic regardless of where we deploy.
+GOOGLE_BOOKS_COUNTRY = os.environ.get("GOOGLE_BOOKS_COUNTRY", "US")
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
 COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
@@ -30,6 +35,7 @@ class ApiSource(Enum):
     google = "GOOGLE"
     open_lib = "OPEN_LIB"
     douban = "DOUBAN"
+    isbnnet = "ISBNNET"
     nlc = "NLC"
 
 
@@ -48,7 +54,16 @@ class Book:
 
 
 def fetch_book_metadata(isbn: str) -> Book | None:
-    for source in (_from_douban, _from_google_books, _from_open_library, _from_nlc):
+    # ISBNnet is first because it's the highest-quality source for Taiwan ISBNs and
+    # returns None instantly (no network) for everything else — so it's effectively
+    # free for non-Taiwan books while giving Taiwan books their best source first.
+    for source in (
+        _from_isbnnet,
+        _from_douban,
+        _from_google_books,
+        _from_open_library,
+        _from_nlc,
+    ):
         try:
             book = source(isbn)
         except requests.RequestException as err:
@@ -99,15 +114,15 @@ def _from_open_library(isbn: str) -> Book | None:
 
 
 def _from_google_books(isbn: str) -> Book | None:
-    params = {"q": f"isbn:{isbn}"}
-    if GOOGLE_BOOKS_API_KEY:
-        params["key"] = GOOGLE_BOOKS_API_KEY
-    resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
-    data = resp.json()
-    items = data.get("items")
-    if not items:
+    info = _google_books_volume(isbn)
+    # Some volumes are indexed only under the ISBN-10. Retry with that form before
+    # giving up (free helper, no network unless the first query missed).
+    if info is None:
+        alt = isbn13_to_isbn10(isbn)
+        if alt:
+            info = _google_books_volume(alt)
+    if info is None:
         return None
-    info = items[0]["volumeInfo"]
     return Book(
         isbn=isbn,  # thread in the arg — volumeInfo has no isbn field
         title=info.get("title", ""),
@@ -116,6 +131,33 @@ def _from_google_books(isbn: str) -> Book | None:
         publisher=info.get("publisher", ""),
         year=info.get("publishedDate", ""),
         source=ApiSource.google.value,
+    )
+
+
+def _google_books_volume(isbn: str) -> dict | None:
+    """Return the first matching volumeInfo dict for an ISBN, or None."""
+    params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
+    if GOOGLE_BOOKS_API_KEY:
+        params["key"] = GOOGLE_BOOKS_API_KEY
+    resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
+    items = resp.json().get("items")
+    if not items:
+        return None
+    return items[0]["volumeInfo"]
+
+
+def _from_isbnnet(isbn: str) -> Book | None:
+    data = fetch_isbnnet_metadata(isbn)
+    if data is None:
+        return None
+    return Book(
+        isbn=isbn,
+        title=data["title"],
+        author=data["author"],
+        cover_url=_cover_url(isbn),  # ISBNnet covers are unreliable; reuse GB/OL
+        publisher=data["publisher"],
+        year=data["year"],
+        source=ApiSource.isbnnet.value,
     )
 
 
@@ -137,7 +179,7 @@ def _from_douban(isbn: str) -> Book | None:
 def _cover_url(isbn: str) -> str:
     """Return a hotlink-friendly cover URL: Google Books thumbnail, else Open Library."""
     try:
-        params = {"q": f"isbn:{isbn}"}
+        params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
         if GOOGLE_BOOKS_API_KEY:
             params["key"] = GOOGLE_BOOKS_API_KEY
         resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)

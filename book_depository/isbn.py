@@ -69,6 +69,18 @@ def isbn10_to_isbn13(isbn10: str) -> str:
     return core + str(chk)
 
 
+def isbn13_to_isbn10(isbn13: str) -> str:
+    """Convert a 978-prefixed ISBN-13 back to its ISBN-10, or '' if not convertible
+    (979-prefixed ISBN-13s have no ISBN-10 form). Some catalogues index a book only
+    under its ISBN-10, so this lets a lookup retry with the other form."""
+    if not (len(isbn13) == 13 and isbn13.startswith("978")):
+        return ""
+    core = isbn13[3:12]  # 9 payload digits, drop "978" and the ISBN-13 check digit
+    total = sum(int(d) * (10 - i) for i, d in enumerate(core))
+    chk = (11 - total % 11) % 11
+    return core + ("X" if chk == 10 else str(chk))
+
+
 def to_isbn13(raw: str):
     """Coerce ISBN-10 OR ISBN-13 input (dashes/spaces/X allowed) to a canonical
     13-digit ISBN-13 string, or None if neither form is valid. The single front
@@ -94,6 +106,8 @@ if __name__ == "__main__":
     assert not is_valid_isbn10("0131103629")  # bad check digit -> False
     assert not is_valid_isbn10("013110362")  # only 9 chars -> False
     assert isbn10_to_isbn13("0131103628") == "9780131103627"  # known pair
+    assert isbn13_to_isbn10("9780131103627") == "0131103628"  # round-trips back
+    assert isbn13_to_isbn10("9791234567896") == ""  # 979 has no ISBN-10 form
 
     # to_isbn13 front door: accepts both forms, dashes, spaces, lowercase x
     assert to_isbn13("0-13-110362-8") == "9780131103627"  # dashed ISBN-10
