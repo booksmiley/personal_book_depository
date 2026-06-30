@@ -298,3 +298,4 @@ button:disabled { opacity: 0.45; cursor: default; }
 .col-edit-row .col-name-input { flex: 1; }
 .col-edit-btn, .col-delete-btn { font-size: 0.72rem; padding: 3px 8px; margin: 0; }
 .col-delete-btn { color: #c00000; font-weight: bold; }
+.book-list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }

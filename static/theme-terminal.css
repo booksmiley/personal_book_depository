@@ -265,3 +265,5 @@ button:disabled { opacity: 0.3; cursor: default; }
 .col-edit-row .col-name-input { flex: 1; }
 .col-edit-btn { border-color: var(--accent); color: var(--accent); font-size: 0.78rem; padding: 3px 10px; margin: 0; }
 .col-delete-btn { border-color: var(--red); color: var(--red); font-size: 0.78rem; padding: 3px 10px; margin: 0; }
+.book-list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.book-list th.sortable:hover { color: var(--accent); }

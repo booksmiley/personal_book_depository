@@ -186,7 +186,7 @@ function bookInfoHtml(book, showCounts) {
     <div>
       <strong>${esc(book.title || "(no title)")}</strong><br />
       ${esc(book.author || "")}<br />
-      <small>ISBN ${esc(book.isbn || "")}</small>${counts}
+      <small>ISBN ${esc(book.isbn || "")}${book.language ? " · " + esc(book.language) : ""}</small>${counts}
       <div id="actions"></div>
     </div>`;
 }
@@ -279,15 +279,24 @@ const COLUMN_LABELS = {
   total_count: "Copies", available: "Available",
 };
 const DEFAULT_COLUMNS = ["title", "author", "year", "publisher", "available"];
+// User-friendly column order (the API returns keys alphabetically). Any column not
+// listed here — e.g. a future migration field — is appended after these.
+const COLUMN_ORDER = [
+  "title", "author", "year", "publisher", "language",
+  "isbn", "source", "total_count", "available",
+];
 
 let visibleColumns =
   JSON.parse(localStorage.getItem("collectionColumns") || "null") || DEFAULT_COLUMNS;
 
-// Options come straight from the DB row keys (a future migration column appears
-// automatically), minus the hidden internal ones.
+// Options come from the DB row keys (a future migration column appears automatically),
+// minus the hidden internal ones, ordered the friendly way above.
 function availableColumns(books) {
   if (!books || !books.length) return [];
-  return Object.keys(books[0]).filter((k) => !HIDDEN_COLUMNS.has(k));
+  const present = Object.keys(books[0]).filter((k) => !HIDDEN_COLUMNS.has(k));
+  const ordered = COLUMN_ORDER.filter((k) => present.includes(k));
+  const extra = present.filter((k) => !COLUMN_ORDER.includes(k));
+  return [...ordered, ...extra];
 }
 const colLabel = (key) => COLUMN_LABELS[key] || key;
 
@@ -404,7 +413,7 @@ function renderGrid(books) {
       const badgeClass = avail > 0 ? "badge-ok" : "badge-out";
       const badgeLabel = avail > 0 ? `${avail}/${total}` : "Out";
       return `
-        <div class="book-card">
+        <div class="book-card" data-isbn="${esc(book.isbn)}">
           ${cover}
           <div class="info">
             <strong>${esc(book.title || "(no title)")}</strong>
@@ -420,21 +429,60 @@ function renderGrid(books) {
   });
 }
 
+// Click a column header to sort ascending; click again for descending.
+let sortColumn = null;
+let sortDir = 1; // 1 = ascending, -1 = descending
+
+function sortBooks(books) {
+  if (!sortColumn) return books;
+  return books.slice().sort((a, b) => {
+    const x = a[sortColumn];
+    const y = b[sortColumn];
+    const nx = Number(x);
+    const ny = Number(y);
+    const numeric = x != null && y != null && x !== "" && y !== "" && !isNaN(nx) && !isNaN(ny);
+    if (numeric) return (nx - ny) * sortDir;
+    return String(x ?? "").localeCompare(String(y ?? ""), undefined, { numeric: true }) * sortDir;
+  });
+}
+
 function renderList(books) {
   const cols = effectiveColumns(books);
-  const head = cols.map((c) => `<th>${esc(colLabel(c))}</th>`).join("");
-  const rows = books
-    .map((book) => `<tr>${cols.map((c) => `<td>${cellHtml(book, c)}</td>`).join("")}</tr>`)
+  const head = cols
+    .map((c) => {
+      const arrow = sortColumn === c ? (sortDir === 1 ? " ▲" : " ▼") : "";
+      return `<th class="sortable" data-col="${esc(c)}">${esc(colLabel(c))}${arrow}</th>`;
+    })
+    .join("");
+  const sorted = sortBooks(books);
+  const rows = sorted
+    .map(
+      (book) =>
+        `<tr data-isbn="${esc(book.isbn)}">${cols
+          .map((c) => `<td>${cellHtml(book, c)}</td>`)
+          .join("")}</tr>`,
+    )
     .join("");
   collectionBodyEl.innerHTML = `
     <table class="book-list">
       <thead><tr>${head}</tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+  collectionBodyEl.querySelectorAll("thead th.sortable").forEach((th) => {
+    th.addEventListener("click", () => {
+      const c = th.dataset.col;
+      if (sortColumn === c) sortDir = -sortDir;
+      else {
+        sortColumn = c;
+        sortDir = 1;
+      }
+      renderCollection(cachedBooks); // re-render with the new sort
+    });
+  });
   collectionBodyEl.querySelectorAll("tbody tr").forEach((row, i) => {
     row.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
-      openCollectionAction(books[i], row, "list");
+      openCollectionAction(sorted[i], row, "list");
     });
   });
 }
@@ -460,20 +508,10 @@ function closeCollectionAction() {
 
 async function openCollectionAction(book, el, view) {
   if (el.classList.contains("col-active")) return;
-  closeCollectionAction(); // close any previously open action first
+  closeCollectionAction(); // close any previously open action (re-renders the list)
 
-  // Re-query the element after re-render triggered by closeCollectionAction.
-  // For grid: find the card whose ISBN matches. For list: find the matching row.
-  let target;
-  if (view === "grid") {
-    const allCards = collectionBodyEl.querySelectorAll(".book-card");
-    const idx = cachedBooks.findIndex((b) => b.isbn === book.isbn);
-    target = allCards[idx];
-  } else {
-    const allRows = collectionBodyEl.querySelectorAll("tbody tr");
-    const idx = cachedBooks.findIndex((b) => b.isbn === book.isbn);
-    target = allRows[idx];
-  }
+  // Re-find the freshly-rendered element by ISBN — robust to any sort order.
+  const target = collectionBodyEl.querySelector(`[data-isbn="${book.isbn}"]`);
   if (!target) return;
 
   target.classList.add("col-active");
