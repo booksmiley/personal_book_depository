@@ -16,7 +16,6 @@ import requests
 from book_depository.douban import fetch_douban_metadata
 from book_depository.isbn import isbn13_to_isbn10
 from book_depository.isbnnet import fetch_isbnnet_metadata
-from book_depository.nlc import fetch_nlc_metadata
 
 log = logging.getLogger(__name__)
 GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
@@ -36,7 +35,6 @@ class ApiSource(Enum):
     open_lib = "OPEN_LIB"
     douban = "DOUBAN"
     isbnnet = "ISBNNET"
-    nlc = "NLC"
 
 
 @dataclass
@@ -47,33 +45,64 @@ class Book:
     cover_url: str = ""
     publisher: str = ""
     year: str = ""
-    source: str = ""  # which API answered — handy while debugging coverage gaps
+    language: str = ""
+    source: str = ""  # which API(s) answered — handy while debugging coverage gaps
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
+# Fields we fill by combining sources. Once the "core" bibliographic ones are all
+# present we stop querying; cover_url/language are filled opportunistically from
+# whichever sources we already hit.
+_MERGE_FIELDS = ("title", "author", "cover_url", "publisher", "year", "language")
+_CORE_FIELDS = ("title", "author", "publisher", "year")
+
+
 def fetch_book_metadata(isbn: str) -> Book | None:
-    # ISBNnet is first because it's the highest-quality source for Taiwan ISBNs and
-    # returns None instantly (no network) for everything else — so it's effectively
-    # free for non-Taiwan books while giving Taiwan books their best source first.
-    for source in (
-        _from_isbnnet,
-        _from_douban,
-        _from_google_books,
-        _from_open_library,
-        _from_nlc,
-    ):
+    """Combine sources in priority order, filling each book's empty fields from the
+    next source, until the core fields are all present (or sources run out). This is
+    more complete than first-hit: e.g. ISBNnet supplies the correct Traditional
+    Chinese title while Google fills a missing publisher or cover."""
+    merged: Book | None = None
+    contributors: list[str] = []
+
+    for source in (_from_isbnnet, _from_douban, _from_open_library, _from_google_books):
         try:
             book = source(isbn)
-        except requests.RequestException as err:
+        except Exception as err:  # network OR parse hiccup — skip, try the next source
             log.warning("%s failed for %s: %s", source.__name__, isbn, err)
-            book = None
-        if book is not None:
-            log.info("metadata for %s resolved via %s", isbn, book.source)
-            return book
-    log.warning("no metadata found for %s (all sources exhausted)", isbn)
-    return None
+            continue
+        if book is None:
+            continue
+        if merged is None:
+            merged = book
+            contributors.append(book.source)
+        elif _merge_into(merged, book):
+            contributors.append(book.source)
+        if _has_core(merged):
+            break
+
+    if merged is None:
+        log.warning("no metadata found for %s (all sources exhausted)", isbn)
+        return None
+    merged.source = "+".join(dict.fromkeys(contributors))  # e.g. "ISBNNET+GOOGLE"
+    log.info("metadata for %s resolved via %s", isbn, merged.source)
+    return merged
+
+
+def _merge_into(base: Book, extra: Book) -> bool:
+    """Fill base's empty fields from extra. Returns True if it contributed anything."""
+    filled = False
+    for field in _MERGE_FIELDS:
+        if not getattr(base, field) and getattr(extra, field):
+            setattr(base, field, getattr(extra, field))
+            filled = True
+    return filled
+
+
+def _has_core(book: Book) -> bool:
+    return all(getattr(book, field) for field in _CORE_FIELDS)
 
 
 def resolve_open_lib_authors(authors_refs: list) -> str:
@@ -130,6 +159,7 @@ def _from_google_books(isbn: str) -> Book | None:
         cover_url=info.get("imageLinks", {}).get("thumbnail", ""),
         publisher=info.get("publisher", ""),
         year=info.get("publishedDate", ""),
+        language=info.get("language", ""),  # ISO code, e.g. "en", "zh"
         source=ApiSource.google.value,
     )
 
@@ -157,6 +187,7 @@ def _from_isbnnet(isbn: str) -> Book | None:
         cover_url=_cover_url(isbn),  # ISBNnet covers are unreliable; reuse GB/OL
         publisher=data["publisher"],
         year=data["year"],
+        language="zh-Hant",  # Taiwan registry = Traditional Chinese
         source=ApiSource.isbnnet.value,
     )
 
@@ -172,6 +203,7 @@ def _from_douban(isbn: str) -> Book | None:
         cover_url=_cover_url(isbn),  # Douban blocks hotlinking; use GB or OL instead
         publisher=data["publisher"],
         year=data["year"],
+        language="zh-Hans",  # mainland Douban = Simplified Chinese
         source=ApiSource.douban.value,
     )
 
@@ -191,21 +223,6 @@ def _cover_url(isbn: str) -> str:
     except requests.RequestException:
         pass
     return COVER_URL.format(isbn=isbn)
-
-
-def _from_nlc(isbn: str) -> Book | None:
-    data = fetch_nlc_metadata(isbn)
-    if data is None:
-        return None
-    return Book(
-        isbn=isbn,
-        title=data["title"],
-        author=data["author"],
-        cover_url="",  # NLC OPAC has no cover images
-        publisher=data["publisher"],
-        year=data["year"],
-        source=ApiSource.nlc.value,
-    )
 
 
 if __name__ == "__main__":

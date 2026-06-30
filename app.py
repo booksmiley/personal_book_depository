@@ -158,6 +158,7 @@ def register(raw_isbn: str):
                             "cover_url",
                             "publisher",
                             "year",
+                            "language",
                             "source",
                         )
                     }
