@@ -118,16 +118,89 @@ will show a "Not Private" warning — tap through it once. After that it remembe
 | Self-signed (default) | Nothing — just run | Once per device |
 | mkcert (no warning) | `brew install mkcert && mkcert <your-lan-ip>`, then set `certfile`/`keyfile` in config.yml | None |
 
-## Deploy to Render
+## Deploy to Render (with durable data)
 
-`render.yaml` is included. Push to GitHub, connect to Render, and it deploys
-automatically. **Note**: the free tier has no persistent disk — data is wiped on
-each redeploy. For a permanent deploy, add a paid disk volume (see `render.yaml`
-comments).
+Render's free tier has an **ephemeral disk** — the SQLite file is wiped on every
+redeploy *and* on every cold start after the service idles. To keep data durable we
+run [Litestream](https://litestream.io) inside the container: it restores the database
+from object storage on boot and continuously streams changes back up. Render's disk
+becomes a throwaway working copy; the **object-storage bucket is the source of truth**.
 
-Set `BOOK_PASSWORD` in the Render environment dashboard to gate the public URL behind
-a password (HTTP Basic Auth — browser shows a native login dialog). Leave it unset for
-open LAN-only deployments.
+This needs a free **Cloudflare R2** bucket (S3-compatible object storage; 10 GB free,
+no egress fees). The whole setup is a one-time ~15 minutes.
+
+### Step 1 — Create the Cloudflare R2 bucket
+
+1. Sign up at <https://dash.cloudflare.com/sign-up> (free). You'll be asked for a card
+   to enable R2, but the free tier won't charge you at this scale.
+2. In the dashboard sidebar click **R2** → **Create bucket**.
+3. Name it (e.g. `church-library`) and create it. Region: **Automatic** is fine.
+4. Note your **endpoint URL**. It's shown on the R2 overview as
+   `https://<account-id>.r2.cloudflarestorage.com` (the account-id is a long hex
+   string). You'll need this for `R2_ENDPOINT`.
+
+### Step 2 — Create an R2 API token
+
+1. In **R2** → **Manage R2 API Tokens** → **Create API token**.
+2. Permissions: **Object Read & Write**. Scope it to your bucket (or all buckets).
+3. Create it, then copy the **Access Key ID** and **Secret Access Key** — the secret
+   is shown only once. These become `LITESTREAM_ACCESS_KEY_ID` and
+   `LITESTREAM_SECRET_ACCESS_KEY`.
+
+### Step 3 — Deploy on Render
+
+1. Push this repo to GitHub (Render deploys from there).
+2. At <https://dashboard.render.com> → **New +** → **Blueprint**.
+3. Connect your GitHub and pick this repo. Render reads `render.yaml` and sees a Docker
+   web service.
+4. It will prompt for each `sync: false` env var. Fill them in:
+
+   | Variable | Value |
+   |----------|-------|
+   | `R2_BUCKET` | your bucket name, e.g. `church-library` |
+   | `R2_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
+   | `LITESTREAM_ACCESS_KEY_ID` | the Access Key ID from step 2 |
+   | `LITESTREAM_SECRET_ACCESS_KEY` | the Secret Access Key from step 2 |
+   | `BOOK_PASSWORD` | a strong password to gate the public site (recommended) |
+   | `GOOGLE_BOOKS_API_KEY` | optional; improves metadata |
+   | `BOOK_TITLE` | optional; page heading |
+   | `BOOK_THEME` | optional; `apple` / `win95` / `terminal` |
+
+5. **Apply** / **Create**. The first build installs Litestream + the app (a few
+   minutes). On boot you'll see `No local DB found — attempting restore from replica…`
+   in the logs; on a fresh bucket that's a no-op and the app creates a new DB.
+
+### Step 4 — Verify durability
+
+1. Open the Render URL, register or borrow a book.
+2. In Render → **Logs**, confirm a `LEDGER {...}` line appeared for the action, and
+   that Litestream logged a replication to R2.
+3. In Cloudflare → R2 → your bucket, you should see a `lib_admin/` path with snapshot
+   and WAL files.
+4. The real test: in Render → **Manual Deploy** → **Clear build cache & deploy** (or
+   just wait for an idle spin-down), then reload — your book is still there, restored
+   from R2.
+
+### How recovery works
+
+Two independent safety nets:
+
+- **Litestream → R2** is the primary: the live DB is continuously replicated and
+  restored on every boot.
+- **The `LEDGER` event log** in Render's logs is the backup-to-the-backup. Every
+  `book_added` / `copy_added` / `borrowed` / `returned` is a complete JSON record.
+  If the bucket were ever lost, replaying these lines in timestamp order rebuilds the
+  database. (Render's free-tier log retention is limited; add a log drain later if you
+  want indefinite history.)
+
+**Single writer:** the container runs `gunicorn --workers 1` on purpose — Litestream
+assumes one writer, and a single worker is plenty for a small library.
+
+### Cost
+
+Free, in practice: R2 free tier (10 GB, no egress) and Render's free web service. The
+trade-off of the free Render tier is a slow (~30–60 s) cold start after the service
+idles; the first visitor after a quiet spell waits, everyone after is instant.
 
 ## Config reference
 
@@ -152,5 +225,9 @@ See `local_config/config.template.yml` for a fully commented template. Key field
 | `BOOK_TITLE` | Page heading (same as `title:` in config) |
 | `BOOK_THEME` | UI theme: `apple` / `win95` / `terminal` |
 | `GOOGLE_BOOKS_API_KEY` | Google Books API key for improved metadata |
-| `BOOK_DATA_DIR` | SQLite data directory |
-| `BOOK_BACKUP_DIR` | Backup snapshot directory |
+| `BOOK_DATA_DIR` | SQLite data directory (set to `/data` in the Docker image) |
+| `BOOK_BACKUP_DIR` | Backup snapshot directory (local iCloud backups; unused on Render) |
+| `R2_BUCKET` | Litestream: object-storage bucket name |
+| `R2_ENDPOINT` | Litestream: S3 endpoint, e.g. `https://<id>.r2.cloudflarestorage.com` |
+| `LITESTREAM_ACCESS_KEY_ID` | Litestream: R2/B2 access key |
+| `LITESTREAM_SECRET_ACCESS_KEY` | Litestream: R2/B2 secret key |

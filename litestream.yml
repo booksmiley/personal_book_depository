@@ -1,0 +1,19 @@
+# Litestream config — replicates the live SQLite DB to S3-compatible object storage.
+#
+# Env vars are expanded at runtime (set these in the Render dashboard):
+#   R2_BUCKET     bucket name, e.g. church-library
+#   R2_ENDPOINT   e.g. https://<accountid>.r2.cloudflarestorage.com
+#   LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY  (read automatically)
+#
+# NOTE: one entry per database file. This deploy is single-owner (DEFAULT_OWNER =
+# "lib_admin" -> lib_admin.sqlite). If you ever add more owners, add one db: block
+# per owner file here.
+dbs:
+  - path: /data/lib_admin.sqlite
+    replicas:
+      - type: s3
+        bucket: ${R2_BUCKET}
+        path: lib_admin
+        endpoint: ${R2_ENDPOINT}
+        region: auto            # "auto" works for Cloudflare R2; set a real region for B2
+        force-path-style: true  # required for custom S3 endpoints (R2/B2)

@@ -19,6 +19,7 @@ from book_depository.db import (
     open_loans,
 )
 from book_depository.isbn import is_valid_isbn13, normalize_isbn, to_isbn13
+from book_depository.ledger import log_event
 from book_depository.metadata import Book, fetch_book_metadata
 
 # Show timestamped logs in the console. INFO for everything, DEBUG for our own
@@ -134,6 +135,16 @@ def register(raw_isbn: str):
             # and with borrow/return (which also convert to ISBN-13).
             meta.isbn = isbn
             add_book(conn, meta)
+            log_event(
+                "book_added",
+                isbn=meta.isbn,
+                title=meta.title,
+                author=meta.author,
+                cover_url=meta.cover_url,
+                publisher=meta.publisher,
+                year=meta.year,
+                source=meta.source,
+            )
             backup_db(conn, BACKUP_DIR)
             return jsonify(status="added", book=meta.to_dict())
 
@@ -143,6 +154,7 @@ def register(raw_isbn: str):
 
         add_copy(conn, isbn)
         fresh = find_book_by_isbn(conn, isbn)  # re-read for the updated counts
+        log_event("copy_added", isbn=isbn, total_count=fresh["total_count"])
         backup_db(conn, BACKUP_DIR)
         return jsonify(status="copy_added", book=dict(fresh))
     finally:
@@ -186,9 +198,10 @@ def borrow(raw_isbn: str):
         borrower = (request.get_json(silent=True) or {}).get("borrower", "").strip()
         if not borrower:
             abort(400, "A borrower name is required.")
-        available = borrow_book(conn, row["book_id"], borrower)
-        if available is None:
+        loan_id = borrow_book(conn, row["book_id"], borrower)
+        if loan_id is None:
             abort(409, "No copies available to borrow.")
+        log_event("borrowed", isbn=isbn, loan_id=loan_id, borrower=borrower)
         fresh = find_book_by_isbn(conn, isbn)
         backup_db(conn, BACKUP_DIR)
     finally:
@@ -213,6 +226,7 @@ def return_book_route(raw_isbn: str):
         available = close_loan(conn, loan_id)
         if available is None:
             abort(409, "That loan was already returned.")
+        log_event("returned", isbn=isbn, loan_id=loan_id)
         fresh = find_book_by_isbn(conn, isbn)
         backup_db(conn, BACKUP_DIR)
     finally:

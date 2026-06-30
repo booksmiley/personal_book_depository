@@ -1,24 +1,35 @@
 # Render Blueprint — defines the web service so the deploy is reproducible.
 # In Render: New + → Blueprint → pick this repo, and it reads this file.
+#
+# This service deploys via the Dockerfile (Litestream + gunicorn). Litestream keeps
+# the SQLite data durable by replicating it to S3-compatible object storage, so the
+# free plan's EPHEMERAL disk is no longer a problem — the DB is restored from the
+# bucket on every cold start. See README "Persistence on Render".
 services:
   - type: web
     name: personal-book-depository
-    runtime: python
+    runtime: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    # gunicorn is the production server; it imports `app` from app.py (the Flask
-    # instance) and binds to the port Render injects via $PORT.
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
-      # Set the actual key in the Render dashboard — `sync: false` keeps the
-      # secret OUT of the repo (Render will prompt you for the value).
-      - key: GOOGLE_BOOKS_API_KEY
+      # Set all secrets in the Render dashboard — `sync: false` keeps them OUT of
+      # the repo (Render prompts for each value on first deploy).
+
+      # --- Litestream / object storage (Cloudflare R2 or Backblaze B2) ---
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ENDPOINT          # https://<accountid>.r2.cloudflarestorage.com
+        sync: false
+      - key: LITESTREAM_ACCESS_KEY_ID
+        sync: false
+      - key: LITESTREAM_SECRET_ACCESS_KEY
         sync: false
 
-    # NOTE on data persistence: the free plan's filesystem is EPHEMERAL — the
-    # SQLite files in data/ are wiped on every redeploy/restart. That's fine for
-    # testing the phone-camera path now. For durable data, add a paid disk:
-    #   disk:
-    #     name: data
-    #     mountPath: /opt/render/project/src/data
-    #     sizeGB: 1
+      # --- App config ---
+      - key: GOOGLE_BOOKS_API_KEY  # improves metadata; optional
+        sync: false
+      - key: BOOK_PASSWORD         # gates the public site behind Basic Auth
+        sync: false
+      - key: BOOK_TITLE            # page heading / browser tab (optional)
+        sync: false
+      - key: BOOK_THEME            # apple | win95 | terminal (optional)
+        sync: false
