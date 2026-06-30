@@ -22,6 +22,7 @@ from book_depository.db import (
     open_loans,
     update_book,
 )
+from book_depository.i18n import get_strings
 from book_depository.isbn import is_valid_isbn13, normalize_isbn, to_isbn13
 from book_depository.ledger import log_event
 from book_depository.metadata import Book, fetch_book_metadata
@@ -42,6 +43,18 @@ DEFAULT_OWNER = "lib_admin"
 THEME = os.environ.get("BOOK_THEME", "apple")
 TITLE = os.environ.get("BOOK_TITLE", "Library")
 _VALID_THEMES = {"apple", "win95", "terminal"}
+# UI language for the minimal flow (menu + borrow/return/register messages). Fixed at
+# startup. "en" or "zh-Hant".
+LANG = os.environ.get("BOOK_LANG", "en")
+STRINGS = get_strings(LANG)
+
+
+def _t(key: str, **kwargs) -> str:
+    """Translate a server-message key, filling {placeholders} when given."""
+    s = STRINGS.get(key, key)
+    return s.format(**kwargs) if kwargs else s
+
+
 # Set BOOK_PASSWORD on Render to password-protect the whole site.
 # Leave unset (or empty) for local LAN use where the network is the perimeter.
 BOOK_PASSWORD = os.environ.get("BOOK_PASSWORD", "")
@@ -103,6 +116,8 @@ def index():
         title=TITLE,
         admin_enabled=ADMIN_OPEN or bool(ADMIN_PASSWORD),
         admin_open=ADMIN_OPEN,
+        lang=LANG,
+        strings=STRINGS,
     )
 
 
@@ -124,11 +139,11 @@ def lookup(raw_isbn: str):
     """
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
 
     book = fetch_book_metadata(isbn)
     if book is None:
-        abort(404, description=f"No metadata found for {isbn}")
+        abort(404, description=_t("srv_no_book"))
 
     return jsonify(book.to_dict())
 
@@ -137,7 +152,7 @@ def lookup(raw_isbn: str):
 def register(raw_isbn: str):
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
 
     # `?confirm=true` means the user already saw the "add a copy?" dialog and said yes.
     confirm = request.args.get("confirm") == "true"
@@ -166,7 +181,7 @@ def register(raw_isbn: str):
             else:
                 meta = fetch_book_metadata(isbn)
             if meta is None:
-                abort(404, "no book is found online")
+                abort(404, _t("srv_no_book"))
             # Always store under the validated/converted ISBN-13, never the
             # client-supplied one — keeps the key consistent with de-dup above
             # and with borrow/return (which also convert to ISBN-13).
@@ -206,12 +221,12 @@ def book_lookup(raw_isbn: str):
     """
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
     try:
         row = find_book_by_isbn(conn, isbn)
         if row is None:
-            abort(404, "This book isn't in the library yet.")
+            abort(404, _t("srv_not_in_library"))
         loans = [dict(l) for l in open_loans(conn, row["book_id"])]
     finally:
         conn.close()
@@ -226,18 +241,18 @@ def borrow(raw_isbn: str):
     """
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
     try:
         row = find_book_by_isbn(conn, isbn)
         if row is None:
-            abort(404, "This book isn't in the library yet.")
+            abort(404, _t("srv_not_in_library"))
         borrower = (request.get_json(silent=True) or {}).get("borrower", "").strip()
         if not borrower:
-            abort(400, "A borrower name is required.")
+            abort(400, _t("srv_borrower_required"))
         loan_id = borrow_book(conn, row["book_id"], borrower)
         if loan_id is None:
-            abort(409, "No copies available to borrow.")
+            abort(409, _t("srv_no_copies"))
         log_event("borrowed", isbn=isbn, loan_id=loan_id, borrower=borrower)
         fresh = find_book_by_isbn(conn, isbn)
         backup_db(conn, BACKUP_DIR)
@@ -254,15 +269,15 @@ def return_book_route(raw_isbn: str):
     """
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
     try:
         loan_id = (request.get_json(silent=True) or {}).get("loan_id")
         if not loan_id:
-            abort(400, "Pick which loan to return.")
+            abort(400, _t("srv_pick_loan"))
         available = close_loan(conn, loan_id)
         if available is None:
-            abort(409, "That loan was already returned.")
+            abort(409, _t("srv_already_returned"))
         log_event("returned", isbn=isbn, loan_id=loan_id)
         fresh = find_book_by_isbn(conn, isbn)
         backup_db(conn, BACKUP_DIR)
@@ -279,13 +294,13 @@ def edit_book(raw_isbn: str):
         abort(403, "Admin access required.")
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     payload = request.get_json(silent=True) or {}
     conn = get_db(DEFAULT_OWNER)
     try:
         updated = update_book(conn, isbn, payload)
         if updated is None:
-            abort(404, "This book isn't in the library.")
+            abort(404, _t("srv_not_in_library"))
         changed = {k: payload[k] for k in payload if k in EDITABLE_FIELDS}
         log_event("book_edited", isbn=isbn, fields=changed)
         backup_db(conn, BACKUP_DIR)
@@ -301,11 +316,11 @@ def remove_book(raw_isbn: str):
         abort(403, "Admin access required.")
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
-        abort(400, description=f"Not a valid ISBN-10 or ISBN-13: {raw_isbn!r}")
+        abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
     try:
         if not delete_book(conn, isbn):
-            abort(404, "This book isn't in the library.")
+            abort(404, _t("srv_not_in_library"))
         log_event("book_deleted", isbn=isbn)
         backup_db(conn, BACKUP_DIR)
     finally:

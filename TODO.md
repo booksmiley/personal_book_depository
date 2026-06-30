@@ -29,7 +29,9 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   write; local only (Render relies on Litestream).
 - **Local run**: `run_local.py` + `local_config/config.yml`; HTTPS via openssl self-signed
   cert. Data dir defaults to the project's git-ignored `data/`; override in config.
-- **Themes & title**: `apple` / `win95` / `terminal` (`BOOK_THEME`); `BOOK_TITLE`.
+- **Themes / title / language**: `apple` / `win95` / `terminal` (`BOOK_THEME`);
+  `BOOK_TITLE`; `BOOK_LANG` = `en` or `zh-Hant` (繁體) — translates the menu +
+  borrow/return/register messages (`book_depository/i18n.py`); admin/edit stay English.
 - **Security**: site Basic Auth (`BOOK_PASSWORD`) + admin tier; output escaped +
   `https://`-only covers; parameterised SQL incl. whitelisted edit columns.
 

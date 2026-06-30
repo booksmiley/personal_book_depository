@@ -1,0 +1,154 @@
+"""UI + operation-flow translations, selected by the BOOK_LANG env var (default "en").
+
+Scope is the minimal borrowing/returning flow the user asked for: the menu (mode +
+camera + manual entry), the borrow/return/register status messages and their alerts,
+and the server error messages that surface during those operations. Admin/edit and
+column internals stay English.
+
+One dict is the single source of truth: the server reads the srv_* keys directly, and
+the whole dict is embedded in the page so the frontend (scan.js) can read the rest.
+Format placeholders are {braces}: Python uses str.format, JS uses its own fmt() helper.
+"""
+
+_EN = {
+    # Menu / buttons
+    "mode_register": "Register",
+    "mode_borrow": "Borrow",
+    "mode_return": "Return",
+    "mode_collection": "Collection",
+    "btn_start": "Start Camera",
+    "btn_stop": "Stop",
+    "btn_snap": "Snap",
+    "btn_go": "Go",
+    "btn_grid": "⊞ Grid",
+    "btn_list": "≡ List",
+    "btn_columns": "▤ Columns",
+    "btn_admin": "🔒 Admin",
+    "btn_admin_on": "🔓 Admin ✓",
+    "btn_reload": "↻ Reload",
+    "ph_manual": "Enter ISBN manually",
+    "ph_name": "Your name",
+    # Status line
+    "st_idle": "Idle.",
+    "st_scan": "Point the camera at a barcode… ({mode})",
+    "st_camera_error": "Camera error: {msg}",
+    "st_stopped": "Stopped.",
+    "st_looking_up": "Looking up {isbn}…",
+    "st_found": 'Found "{title}" — add it, or scan the next book.',
+    "st_registering": "Registering…",
+    "st_added": 'Added ✅ "{title}" — scanning for the next book.',
+    "st_not_added": "Okay, not added — scanning for the next book.",
+    "st_copy_added": "Copy added — {available} of {total} available. Scanning…",
+    "st_exists": '"{title}" is already registered — add another copy?',
+    "st_borrow_enter_name": '"{title}" — enter your name, then tap Borrow.',
+    "st_no_copies": '"{title}" has no copies available right now.',
+    "st_recording_borrow": "Recording borrow…",
+    "st_borrowed": 'Borrowed ✅ "{title}" to {borrower} — {available} of {total} left. Scanning…',
+    "st_enter_name": "Please enter your name.",
+    "st_who_returning": 'Who\'s returning "{title}"? Tap their loan.',
+    "st_no_copies_out": 'No copies of "{title}" are currently out.',
+    "st_recording_return": "Recording return…",
+    "st_returned": 'Returned ✅ "{title}" — {available} of {total} available. Scanning…',
+    "st_no_barcode": "No barcode found — hold steady and try again.",
+    "st_decoding": "Decoding snapshot…",
+    "st_scan_error": "Scan error: {msg}",
+    "st_snap_error": "Snap error: {msg}",
+    "st_request_failed": "Request failed ({status}).",
+    "st_loading": "Loading…",
+    "st_no_books": "No books registered yet.",
+    "st_book_count": "{n} books",
+    # Action buttons on cards / inline panels
+    "act_add": "Add to library",
+    "act_scan_next": "Scan next book",
+    "act_yes_copy": "Yes, add a copy",
+    "act_no": "No",
+    "act_borrow": "Borrow",
+    "act_return": "Return",
+    "act_return_this": "Return this",
+    "act_cancel": "Cancel",
+    "act_confirm": "Confirm",
+    "act_no_copies_avail": "No copies available",
+    # Server error messages (shown in the status line)
+    "srv_invalid_isbn": "Not a valid ISBN-10 or ISBN-13: {raw}",
+    "srv_no_book": "No book found online for this ISBN.",
+    "srv_not_in_library": "This book isn't in the library yet.",
+    "srv_borrower_required": "A borrower name is required.",
+    "srv_no_copies": "No copies available to borrow.",
+    "srv_pick_loan": "Pick which loan to return.",
+    "srv_already_returned": "That loan was already returned.",
+}
+
+_ZH_HANT = {
+    # Menu / buttons
+    "mode_register": "登記",
+    "mode_borrow": "借書",
+    "mode_return": "還書",
+    "mode_collection": "館藏",
+    "btn_start": "開啟相機",
+    "btn_stop": "停止",
+    "btn_snap": "拍照",
+    "btn_go": "確定",
+    "btn_grid": "⊞ 封面",
+    "btn_list": "≡ 列表",
+    "btn_columns": "▤ 欄位",
+    "btn_admin": "🔒 管理",
+    "btn_admin_on": "🔓 管理 ✓",
+    "btn_reload": "↻ 重新整理",
+    "ph_manual": "手動輸入 ISBN",
+    "ph_name": "您的姓名",
+    # Status line
+    "st_idle": "待機中。",
+    "st_scan": "請將相機對準條碼……（{mode}）",
+    "st_camera_error": "相機錯誤：{msg}",
+    "st_stopped": "已停止。",
+    "st_looking_up": "查詢 {isbn} 中……",
+    "st_found": "找到《{title}》——可加入館藏，或掃描下一本。",
+    "st_registering": "登記中……",
+    "st_added": "已加入 ✅《{title}》——繼續掃描下一本。",
+    "st_not_added": "好的，未加入——繼續掃描下一本。",
+    "st_copy_added": "已新增副本——可借 {available}／{total}。繼續掃描……",
+    "st_exists": "《{title}》已登記——要再新增一本副本嗎？",
+    "st_borrow_enter_name": "《{title}》——請輸入姓名後點「借書」。",
+    "st_no_copies": "《{title}》目前沒有可借的副本。",
+    "st_recording_borrow": "記錄借閱中……",
+    "st_borrowed": "已借出 ✅《{title}》給 {borrower}——剩餘 {available}／{total}。繼續掃描……",
+    "st_enter_name": "請輸入您的姓名。",
+    "st_who_returning": "誰要歸還《{title}》？請點選對應的借閱紀錄。",
+    "st_no_copies_out": "《{title}》目前沒有借出中的副本。",
+    "st_recording_return": "記錄歸還中……",
+    "st_returned": "已歸還 ✅《{title}》——可借 {available}／{total}。繼續掃描……",
+    "st_no_barcode": "未偵測到條碼——請拿穩後再試一次。",
+    "st_decoding": "解析照片中……",
+    "st_scan_error": "掃描錯誤：{msg}",
+    "st_snap_error": "拍照錯誤：{msg}",
+    "st_request_failed": "請求失敗（{status}）。",
+    "st_loading": "載入中……",
+    "st_no_books": "尚未登記任何書籍。",
+    "st_book_count": "共 {n} 本",
+    # Action buttons
+    "act_add": "加入館藏",
+    "act_scan_next": "掃描下一本",
+    "act_yes_copy": "是，新增一本副本",
+    "act_no": "否",
+    "act_borrow": "借書",
+    "act_return": "還書",
+    "act_return_this": "歸還這筆",
+    "act_cancel": "取消",
+    "act_confirm": "確認",
+    "act_no_copies_avail": "沒有可借副本",
+    # Server error messages
+    "srv_invalid_isbn": "不是有效的 ISBN-10 或 ISBN-13：{raw}",
+    "srv_no_book": "線上找不到這個 ISBN 的書籍資料。",
+    "srv_not_in_library": "這本書尚未在館藏中。",
+    "srv_borrower_required": "請填寫借閱人姓名。",
+    "srv_no_copies": "沒有可借的副本。",
+    "srv_pick_loan": "請選擇要歸還的借閱紀錄。",
+    "srv_already_returned": "該筆借閱已歸還。",
+}
+
+STRINGS = {"en": _EN, "zh-Hant": _ZH_HANT}
+
+
+def get_strings(lang: str) -> dict:
+    """Strings for `lang`, falling back to English for unknown codes."""
+    return STRINGS.get(lang, _EN)

@@ -18,7 +18,8 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
   which columns the list shows.
 - **Admin mode** — set an admin password to edit or delete records from the
   collection page.
-- **Themes** — `apple`, `win95`, `terminal`.
+- **Themes & language** — `apple` / `win95` / `terminal`; UI language `en` or
+  `zh-Hant` (繁體) for the borrow/return menu and messages, via `BOOK_LANG`.
 - **Durable on Render** — Litestream replicates SQLite to object storage; a JSON
   event log is a second safety net (Render logs, plus dated files locally).
 - **Auth** — optional site-wide password, plus a separate admin password for edits.
@@ -153,6 +154,7 @@ bucket is ever lost. Free-tier cold starts take ~30–60 s after idle.
 | `BOOK_ADMIN_PASSWORD` | Unlocks edit/delete; unset = admin disabled |
 | `BOOK_ADMIN_OPEN` | Trusted-local admin with no password (`run_local.py` sets it; never on Render) |
 | `BOOK_TITLE` · `BOOK_THEME` | Page heading · UI theme |
+| `BOOK_LANG` | Frontend language for the borrow/return menu: `en` (default) or `zh-Hant` |
 | `GOOGLE_BOOKS_API_KEY` · `GOOGLE_BOOKS_COUNTRY` | Google Books key · country (default `US`) |
 | `SCRAPER_MIN_INTERVAL` | Seconds between scraper hits per host (default `1`) |
 | `BOOK_DATA_DIR` · `BOOK_BACKUP_DIR` | SQLite dir (`/data` in Docker) · backup dir |

@@ -48,6 +48,7 @@ def main() -> None:
     os.environ["BOOK_THEME"] = theme
     title = cfg.get("title", "Library")
     os.environ["BOOK_TITLE"] = title
+    os.environ["BOOK_LANG"] = cfg.get("lang", "en")  # "en" or "zh-Hant"
     # Trusted local run: admin (edit/delete) is ON by default, no password. Set
     # `admin_open: false` in config.yml to require the admin password locally too.
     admin_open = cfg.get("admin_open", True)

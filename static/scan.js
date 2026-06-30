@@ -23,6 +23,16 @@ const collectionBodyEl = document.getElementById("collection-body");
 
 const detector = new BarcodeDetector({ formats: ["ean_13"] });
 
+// UI strings (from the server, per BOOK_LANG). T(key) returns the string; T(key, {…})
+// fills {placeholders}.
+const I18N = JSON.parse(document.getElementById("i18n").textContent);
+function T(key, params) {
+  const s = I18N[key] ?? key;
+  return params ? s.replace(/\{(\w+)\}/g, (_, k) => (k in params ? params[k] : `{${k}}`)) : s;
+}
+// Translated label for the current mode (for the scan prompt).
+const modeLabel = (mode) => T("mode_" + mode);
+
 // Flow states:
 //   scanning=true,  reviewing=false  -> camera live, looking for a barcode
 //   scanning=true,  reviewing=true   -> a book is on the card; detection PAUSED
@@ -62,7 +72,7 @@ async function startCamera() {
     requestAnimationFrame(scanLoop);
   } catch (err) {
     // Most common cause on a phone: not served over HTTPS (camera is blocked).
-    setStatus(`Camera error: ${err.message}`);
+    setStatus(T("st_camera_error", { msg: err.message }));
   }
 }
 
@@ -74,7 +84,7 @@ function stopCamera() {
   startBtn.disabled = false;
   stopBtn.disabled = true;
   snapBtn.disabled = true;
-  setStatus("Stopped.");
+  setStatus(T("st_stopped"));
 }
 
 // Clear the card and go (back) to actively scanning. `keepStatus` leaves the
@@ -84,7 +94,7 @@ function resumeScanning(keepStatus = false) {
   reviewing = false;
   candidate = null;
   candidateCount = 0;
-  if (!keepStatus) setStatus(`Point the camera at a barcode… (${currentMode()})`);
+  if (!keepStatus) setStatus(T("st_scan", { mode: modeLabel(currentMode()) }));
 }
 
 async function scanLoop() {
@@ -111,7 +121,7 @@ async function scanLoop() {
       }
     }
   } catch (err) {
-    setStatus(`Scan error: ${err.message}`);
+    setStatus(T("st_scan_error", { msg: err.message }));
     busy = false;
   }
   requestAnimationFrame(scanLoop);
@@ -130,19 +140,19 @@ async function getJson(url) {
   const resp = await fetch(url);
   if (!resp.ok) {
     const { error } = await resp.json().catch(() => ({}));
-    throw new Error(error || `Request failed (${resp.status}).`);
+    throw new Error(error || T("st_request_failed", { status: resp.status }));
   }
   return resp.json();
 }
 
 // --- Register: fetch metadata from the online API, then offer to add ---
 async function lookupForRegister(isbn) {
-  setStatus(`Looking up ${isbn}…`);
+  setStatus(T("st_looking_up", { isbn }));
   resultEl.innerHTML = "";
   try {
     const book = await getJson(`/api/lookup/${isbn}`);
     renderRegisterCard(book);
-    setStatus(`Found "${book.title}" — add it, or scan the next book.`);
+    setStatus(T("st_found", { title: book.title }));
     return true;
   } catch (err) {
     setStatus(err.message);
@@ -152,7 +162,7 @@ async function lookupForRegister(isbn) {
 
 // --- Borrow / return: look the book up in the DB (no network), then act ---
 async function lookupForAction(isbn, mode) {
-  setStatus(`Looking up ${isbn}…`);
+  setStatus(T("st_looking_up", { isbn }));
   resultEl.innerHTML = "";
   try {
     const { book, open_loans } = await getJson(`/api/book/${isbn}`);
@@ -194,8 +204,8 @@ function bookInfoHtml(book, showCounts) {
 function renderRegisterCard(book) {
   resultEl.innerHTML = bookInfoHtml(book, false);
   const actions = resultEl.querySelector("#actions");
-  actions.innerHTML = `<button id="add">Add to library</button>
-                       <button id="next">Scan next book</button>`;
+  actions.innerHTML = `<button id="add">${esc(T("act_add"))}</button>
+                       <button id="next">${esc(T("act_scan_next"))}</button>`;
   actions.querySelector("#add").addEventListener("click", () => registerBook(book));
   actions.querySelector("#next").addEventListener("click", () => resumeScanning());
 }
@@ -205,11 +215,11 @@ function renderBorrowCard(book) {
   const actions = resultEl.querySelector("#actions");
   const none = book.available <= 0;
   actions.innerHTML = `
-    <input id="borrower" placeholder="Your name" autocomplete="off" />
-    <button id="borrow" ${none ? "disabled" : ""}>Borrow</button>
-    <button id="next">Scan next book</button>`;
-  if (none) setStatus(`"${book.title}" has no copies available right now.`);
-  else setStatus(`"${book.title}" — enter your name, then tap Borrow.`);
+    <input id="borrower" placeholder="${esc(T("ph_name"))}" autocomplete="off" />
+    <button id="borrow" ${none ? "disabled" : ""}>${esc(T("act_borrow"))}</button>
+    <button id="next">${esc(T("act_scan_next"))}</button>`;
+  if (none) setStatus(T("st_no_copies", { title: book.title }));
+  else setStatus(T("st_borrow_enter_name", { title: book.title }));
   actions.querySelector("#borrow").addEventListener("click", () => borrowBook(book));
   actions.querySelector("#next").addEventListener("click", () => resumeScanning());
 }
@@ -220,20 +230,20 @@ function renderReturnCard(book, openLoans) {
   const actions = resultEl.querySelector("#actions");
 
   if (openLoans.length === 0) {
-    actions.innerHTML = `<button id="next">Scan next book</button>`;
-    setStatus(`No copies of "${book.title}" are currently out.`);
+    actions.innerHTML = `<button id="next">${esc(T("act_scan_next"))}</button>`;
+    setStatus(T("st_no_copies_out", { title: book.title }));
   } else {
     const rows = openLoans
       .map(
         (loan) => `
         <div class="loan">
           <span>${esc(loan.borrower)} · ${esc((loan.borrowed_at || "").slice(0, 10))}</span>
-          <button class="return-one" data-loan="${loan.loan_id}">Return this</button>
+          <button class="return-one" data-loan="${loan.loan_id}">${esc(T("act_return_this"))}</button>
         </div>`,
       )
       .join("");
-    actions.innerHTML = `${rows}<button id="next">Scan next book</button>`;
-    setStatus(`Who's returning "${book.title}"? Tap their loan.`);
+    actions.innerHTML = `${rows}<button id="next">${esc(T("act_scan_next"))}</button>`;
+    setStatus(T("st_who_returning", { title: book.title }));
     actions.querySelectorAll(".return-one").forEach((btn) =>
       btn.addEventListener("click", () => returnLoan(book, Number(btn.dataset.loan))),
     );
@@ -381,7 +391,7 @@ if (adminBtn && !adminOpen) {
 
 async function loadCollection() {
   collectionCountEl.textContent = "";
-  collectionBodyEl.innerHTML = "<p>Loading…</p>";
+  collectionBodyEl.innerHTML = `<p>${T("st_loading")}</p>`;
   try {
     const { books } = await getJson("/api/books");
     cachedBooks = books;
@@ -393,9 +403,9 @@ async function loadCollection() {
 
 function renderCollection(books) {
   collectionCountEl.textContent =
-    books.length === 0 ? "" : `${books.length} book${books.length === 1 ? "" : "s"}`;
+    books.length === 0 ? "" : T("st_book_count", { n: books.length });
   if (books.length === 0) {
-    collectionBodyEl.innerHTML = "<p>No books registered yet.</p>";
+    collectionBodyEl.innerHTML = `<p>${T("st_no_books")}</p>`;
     return;
   }
   if (collectionView === "list") renderList(books);
@@ -521,11 +531,11 @@ async function openCollectionAction(book, el, view) {
     const span = effectiveColumns(cachedBooks).length;
     const actionTr = document.createElement("tr");
     actionTr.className = "col-action-row";
-    actionTr.innerHTML = `<td colspan="${span}" class="col-action-cell"><em>Loading…</em></td>`;
+    actionTr.innerHTML = `<td colspan="${span}" class="col-action-cell"><em>${T("st_loading")}</em></td>`;
     target.insertAdjacentElement("afterend", actionTr);
     container = actionTr.querySelector(".col-action-cell");
   } else {
-    target.innerHTML = `<div class="col-action-cell"><em>Loading…</em></div>`;
+    target.innerHTML = `<div class="col-action-cell"><em>${T("st_loading")}</em></div>`;
     container = target.querySelector(".col-action-cell");
   }
 
@@ -546,11 +556,11 @@ function fillCollectionActionUI(book, openLoans, container) {
     <span class="col-book-title">${esc(book.title || "")}</span>
     <div class="col-btns">
       ${avail > 0
-        ? `<button class="col-borrow-btn">Borrow</button>`
-        : `<span class="col-unavail">No copies available</span>`}
-      ${openLoans.length > 0 ? `<button class="col-return-btn">Return</button>` : ""}
+        ? `<button class="col-borrow-btn">${esc(T("act_borrow"))}</button>`
+        : `<span class="col-unavail">${esc(T("act_no_copies_avail"))}</span>`}
+      ${openLoans.length > 0 ? `<button class="col-return-btn">${esc(T("act_return"))}</button>` : ""}
       ${isAdmin() ? `<button class="col-edit-btn">Edit</button><button class="col-delete-btn">Delete</button>` : ""}
-      <button class="col-cancel-btn">Cancel</button>
+      <button class="col-cancel-btn">${esc(T("act_cancel"))}</button>
     </div>
     <div class="col-form"></div>`;
 
@@ -602,8 +612,8 @@ function fillCollectionActionUI(book, openLoans, container) {
 
   container.querySelector(".col-borrow-btn")?.addEventListener("click", () => {
     formEl.innerHTML = `
-      <input class="col-name-input" placeholder="Your name" autocomplete="off" />
-      <button class="col-confirm-btn">Confirm</button>`;
+      <input class="col-name-input" placeholder="${esc(T("ph_name"))}" autocomplete="off" />
+      <button class="col-confirm-btn">${esc(T("act_confirm"))}</button>`;
     const nameInput = formEl.querySelector(".col-name-input");
     nameInput.focus();
     const doBorrow = async () => {
@@ -625,7 +635,7 @@ function fillCollectionActionUI(book, openLoans, container) {
       .map((loan) => `
         <div class="col-loan-row">
           <span>${esc(loan.borrower)} · ${esc((loan.borrowed_at || "").slice(0, 10))}</span>
-          <button class="col-return-one-btn" data-loan="${loan.loan_id}">Return</button>
+          <button class="col-return-one-btn" data-loan="${loan.loan_id}">${esc(T("act_return"))}</button>
         </div>`)
       .join("");
     formEl.innerHTML = loanHtml;
@@ -663,7 +673,7 @@ async function postJson(url, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
+  if (!resp.ok) throw new Error(data.error || T("st_request_failed", { status: resp.status }));
   return data;
 }
 
@@ -675,32 +685,32 @@ async function patchJson(url, body) {
     body: JSON.stringify(body),
   });
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
+  if (!resp.ok) throw new Error(data.error || T("st_request_failed", { status: resp.status }));
   return data;
 }
 
 async function deleteReq(url) {
   const resp = await fetch(url, { method: "DELETE", headers: { ...adminHeaders() } });
   const data = await resp.json().catch(() => ({}));
-  if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status}).`);
+  if (!resp.ok) throw new Error(data.error || T("st_request_failed", { status: resp.status }));
   return data;
 }
 
 // --- Register actions (two-step duplicate-copy confirm) ---
 async function registerBook(book, confirm = false) {
   const url = `/api/register/${book.isbn}` + (confirm ? "?confirm=true" : "");
-  setStatus("Registering…");
+  setStatus(T("st_registering"));
   try {
     const data = await postJson(url, book); // send the book so the server needn't re-fetch
     if (data.status === "added") {
-      setStatus(`Added ✅ "${data.book.title}" — scanning for the next book.`);
+      setStatus(T("st_added", { title: data.book.title }));
       resumeScanning(true);
     } else if (data.status === "exists") {
       // Ask inline (NOT window.confirm): a blocking dialog freezes the camera
       // stream on mobile and it won't resume without restarting the camera.
       promptAddCopy(book, data.book);
     } else if (data.status === "copy_added") {
-      setStatus(`Copy added — ${data.book.available} of ${data.book.total_count} available. Scanning…`);
+      setStatus(T("st_copy_added", { available: data.book.available, total: data.book.total_count }));
       resumeScanning(true);
     }
   } catch (err) {
@@ -713,12 +723,12 @@ async function registerBook(book, confirm = false) {
 function promptAddCopy(book, existing) {
   const actions = resultEl.querySelector("#actions");
   if (!actions) return;
-  setStatus(`"${existing.title}" is already registered — add another copy?`);
-  actions.innerHTML = `<button id="add-copy">Yes, add a copy</button>
-                       <button id="no-copy">No</button>`;
+  setStatus(T("st_exists", { title: existing.title }));
+  actions.innerHTML = `<button id="add-copy">${esc(T("act_yes_copy"))}</button>
+                       <button id="no-copy">${esc(T("act_no"))}</button>`;
   actions.querySelector("#add-copy").addEventListener("click", () => registerBook(book, true));
   actions.querySelector("#no-copy").addEventListener("click", () => {
-    setStatus("Okay, not added — scanning for the next book.");
+    setStatus(T("st_not_added"));
     resumeScanning(true);
   });
 }
@@ -726,13 +736,13 @@ function promptAddCopy(book, existing) {
 async function borrowBook(book) {
   const borrower = resultEl.querySelector("#borrower").value.trim();
   if (!borrower) {
-    setStatus("Please enter your name.");
+    setStatus(T("st_enter_name"));
     return;
   }
-  setStatus("Recording borrow…");
+  setStatus(T("st_recording_borrow"));
   try {
     const data = await postJson(`/api/borrow/${book.isbn}`, { borrower });
-    setStatus(`Borrowed ✅ "${data.book.title}" to ${borrower} — ${data.book.available} of ${data.book.total_count} left. Scanning…`);
+    setStatus(T("st_borrowed", { title: data.book.title, borrower, available: data.book.available, total: data.book.total_count }));
     resumeScanning(true);
   } catch (err) {
     setStatus(err.message);
@@ -740,10 +750,10 @@ async function borrowBook(book) {
 }
 
 async function returnLoan(book, loanId) {
-  setStatus("Recording return…");
+  setStatus(T("st_recording_return"));
   try {
     const data = await postJson(`/api/return/${book.isbn}`, { loan_id: loanId });
-    setStatus(`Returned ✅ "${data.book.title}" — ${data.book.available} of ${data.book.total_count} available. Scanning…`);
+    setStatus(T("st_returned", { title: data.book.title, available: data.book.available, total: data.book.total_count }));
     resumeScanning(true);
   } catch (err) {
     setStatus(err.message);
@@ -758,19 +768,19 @@ snapBtn.addEventListener("click", async () => {
   snapCanvas.height = video.videoHeight;
   snapCanvas.getContext("2d").drawImage(video, 0, 0);
 
-  setStatus("Decoding snapshot…");
+  setStatus(T("st_decoding"));
   busy = true;
   try {
     const barcodes = await detector.detect(snapCanvas);
     if (barcodes.length === 0) {
-      setStatus("No barcode found — hold steady and try again.");
+      setStatus(T("st_no_barcode"));
       busy = false;
       return;
     }
     const ok = await handleScan(barcodes[0].rawValue);
     if (ok) reviewing = true;
   } catch (err) {
-    setStatus(`Snap error: ${err.message}`);
+    setStatus(T("st_snap_error", { msg: err.message }));
   }
   busy = false;
 });

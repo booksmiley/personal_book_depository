@@ -48,6 +48,11 @@ title: "My Library"
 #   terminal — green phosphor on black, CRT scanlines, VT323 font
 theme: apple
 
+# Frontend language for the borrow/return/register menu and messages.
+#   en       — English (default)
+#   zh-Hant  — Traditional Chinese (繁體)
+lang: en
+
 # Trusted-local admin: edit/delete records with no password (you own this machine).
 # Set to false to require the admin password locally too. Always off on Render.
 admin_open: true

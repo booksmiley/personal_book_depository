@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ lang }}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,26 +7,29 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='theme-' + theme + '.css') }}" />
   </head>
   <body data-admin-open="{{ 'true' if admin_open else 'false' }}">
+    <!-- UI strings for the frontend (scan.js reads this). -->
+    <script id="i18n" type="application/json">{{ strings | tojson }}</script>
+
     <div class="scan-wrap">
       <h1>📚 {{ title }}</h1>
 
       <div id="mode" class="segment-control">
-        <label class="segment"><input type="radio" name="mode" value="register" checked />Register</label>
-        <label class="segment"><input type="radio" name="mode" value="borrow" />Borrow</label>
-        <label class="segment"><input type="radio" name="mode" value="return" />Return</label>
-        <label class="segment"><input type="radio" name="mode" value="collection" />Collection</label>
+        <label class="segment"><input type="radio" name="mode" value="register" checked />{{ strings.mode_register }}</label>
+        <label class="segment"><input type="radio" name="mode" value="borrow" />{{ strings.mode_borrow }}</label>
+        <label class="segment"><input type="radio" name="mode" value="return" />{{ strings.mode_return }}</label>
+        <label class="segment"><input type="radio" name="mode" value="collection" />{{ strings.mode_collection }}</label>
       </div>
 
       <div id="camera-ui">
-        <button id="start">Start Camera</button>
-        <button id="stop" disabled>Stop</button>
-        <button id="snap" disabled>Snap</button>
+        <button id="start">{{ strings.btn_start }}</button>
+        <button id="stop" disabled>{{ strings.btn_stop }}</button>
+        <button id="snap" disabled>{{ strings.btn_snap }}</button>
         <video id="video" playsinline muted></video>
-        <p id="status">Idle.</p>
+        <p id="status">{{ strings.st_idle }}</p>
         <div id="manual-entry">
           <input id="manual-isbn" type="text" inputmode="numeric"
-                 placeholder="Enter ISBN manually" maxlength="17" autocomplete="off" />
-          <button id="manual-go">Go</button>
+                 placeholder="{{ strings.ph_manual }}" maxlength="17" autocomplete="off" />
+          <button id="manual-go">{{ strings.btn_go }}</button>
         </div>
         <section id="result"></section>
       </div>
@@ -37,12 +40,12 @@
       <div id="collection-header">
         <span id="collection-count"></span>
         <div class="view-toggle">
-          <button id="view-grid-btn" class="view-btn active">⊞ Grid</button>
-          <button id="view-list-btn" class="view-btn">≡ List</button>
+          <button id="view-grid-btn" class="view-btn active">{{ strings.btn_grid }}</button>
+          <button id="view-list-btn" class="view-btn">{{ strings.btn_list }}</button>
         </div>
-        <button id="columns-btn" class="view-btn" hidden>▤ Columns</button>
-        {% if admin_enabled %}<button id="admin-btn" class="view-btn">🔒 Admin</button>{% endif %}
-        <button id="reload-btn">↻ Reload</button>
+        <button id="columns-btn" class="view-btn" hidden>{{ strings.btn_columns }}</button>
+        {% if admin_enabled %}<button id="admin-btn" class="view-btn">{{ strings.btn_admin }}</button>{% endif %}
+        <button id="reload-btn">{{ strings.btn_reload }}</button>
       </div>
       <div id="column-panel" class="column-panel" hidden></div>
       <div id="collection-body"></div>
