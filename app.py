@@ -4,6 +4,7 @@ import base64
 import hmac
 import logging
 import os
+import sqlite3
 
 from flask import Flask, Response, abort, jsonify, render_template, request
 
@@ -186,7 +187,14 @@ def register(raw_isbn: str):
             # client-supplied one — keeps the key consistent with de-dup above
             # and with borrow/return (which also convert to ISBN-13).
             meta.isbn = isbn
-            add_book(conn, meta)
+            try:
+                add_book(conn, meta)
+            except sqlite3.IntegrityError:
+                # Another request registered this same ISBN a moment ago (the UNIQUE
+                # constraint caught the race). Treat it as already-registered.
+                conn.rollback()
+                fresh = find_book_by_isbn(conn, isbn)
+                return jsonify(status="exists", book=dict(fresh))
             log_event(
                 "book_added",
                 isbn=meta.isbn,
