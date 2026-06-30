@@ -350,4 +350,4 @@ if __name__ == "__main__":
     # localhost counts as a secure context, so the camera works here on your laptop.
     # Phone testing over a LAN IP is BLOCKED without HTTPS — deploy, or use a tunnel
     # (e.g. `cloudflared tunnel`), once you want to test on a real phone.
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True, threaded=True)

@@ -86,7 +86,8 @@ def main() -> None:
     print(f"On this Mac:  {scheme}://localhost:{port}")
     print(f"On your phone (same WiFi): {scheme}://<this-mac-LAN-IP>:{port}")
 
-    app.run(host=host, port=port, ssl_context=ssl_context, debug=True)
+    # threaded=True so a slow metadata lookup doesn't block borrow/return.
+    app.run(host=host, port=port, ssl_context=ssl_context, debug=True, threaded=True)
 
 
 if __name__ == "__main__":
