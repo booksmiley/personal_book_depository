@@ -9,8 +9,9 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
 
 - **Scan / Snap / manual entry** — EAN-13 barcode, still-frame capture for shaky
   shots, or type an ISBN (10 or 13).
-- **Metadata** — ISBNnet (Taiwan) → Douban (mainland China) → Google Books →
-  Open Library, tried in order; non-Taiwan ISBNs skip ISBNnet for free.
+- **Metadata** — ISBNnet (Taiwan) → Douban (mainland China) → Open Library →
+  Google Books, **combined** in priority order (each source fills the previous one's
+  gaps) until the core fields are complete; includes a language tag.
 - **Register / borrow / return** — copies tracked per book; each loan names a
   borrower; return closes the exact loan you pick.
 - **Collection** — grid or list view; tap a book to borrow/return inline, and choose
@@ -30,7 +31,7 @@ browser (thin)                     python
 camera + decode EAN-13   ──GET──>  /api/lookup/<isbn>
   static/scan.js                     book_depository/isbn.py    (validate)
                                       book_depository/metadata.py (fetch)
-                                        └─ isbnnet → douban → google → open library
+                                        └─ isbnnet → douban → open library → google
 
 Register mode            ──POST─>  /api/register/<isbn>
                                      book_depository/db.py       (write)

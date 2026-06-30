@@ -57,8 +57,11 @@ Stack: Python + Flask + stdlib sqlite3 (DB-per-owner). Frontend = zero-build JS 
 - **Snap button**: still-frame barcode decode for shaky-hand / low-light situations.
   Freezes the video frame onto a hidden canvas and runs `BarcodeDetector` on it.
 - **Manual ISBN entry**: text field below the camera for typing/pasting an ISBN directly.
-- **Metadata sources & coverage**: fallback chain is
-  **ISBNnet → Douban → Google Books → Open Library → NLC**.
+- **Metadata sources & coverage**: sources **combined** in priority order
+  **ISBNnet → Douban → Open Library → Google Books** — each fills the previous's empty
+  fields until the core fields (title/author/publisher/year) are complete, so `source`
+  may read e.g. `ISBNNET+OPEN_LIB`. Populates a `language` tag (zh-Hant / zh-Hans / API
+  code). NLC removed (HTTP/3-only, never worked from Python; playwright dep dropped).
   - **ISBNnet** (`isbnnet.py`): Taiwan's NCL registry (全國新書資訊網). Authoritative
     Traditional Chinese for Taiwan ISBNs (groups 957/986/626/627) — fixes cases where
     Google returned wrong Simplified titles. Session + CSRF POST; ROC→Gregorian year.
