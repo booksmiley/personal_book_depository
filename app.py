@@ -1,7 +1,10 @@
 """Flask entry point — thin glue. The real logic lives in book_depository/."""
 
 import base64
+import csv
 import hmac
+import io
+import json
 import logging
 import os
 import sqlite3
@@ -355,6 +358,49 @@ def list_books():
     finally:
         conn.close()
     return jsonify(books=[dict(b) for b in books])
+
+
+# Columns to include in an export (skip book_id — an internal autoincrement).
+_EXPORT_COLUMNS = (
+    "isbn", "title", "author", "publisher", "year", "language",
+    "total_count", "available", "source", "cover_url",
+)
+
+
+@app.get("/api/export.csv")
+def export_csv():
+    """Download the whole catalog as CSV (UTF-8 BOM so Excel reads Chinese)."""
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        books = get_all_books(conn)
+    finally:
+        conn.close()
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(_EXPORT_COLUMNS)
+    for b in books:
+        keys = b.keys()
+        writer.writerow([b[c] if c in keys else "" for c in _EXPORT_COLUMNS])
+    return Response(
+        buf.getvalue().encode("utf-8-sig"),
+        mimetype="text/csv",  # Flask appends "; charset=utf-8"
+        headers={"Content-Disposition": "attachment; filename=library.csv"},
+    )
+
+
+@app.get("/api/export.json")
+def export_json():
+    """Download the whole catalog as JSON."""
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        books = [dict(b) for b in get_all_books(conn)]
+    finally:
+        conn.close()
+    return Response(
+        json.dumps(books, ensure_ascii=False, indent=2),
+        mimetype="application/json; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=library.json"},
+    )
 
 
 if __name__ == "__main__":

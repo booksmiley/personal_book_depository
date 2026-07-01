@@ -871,3 +871,11 @@ manualIsbn.addEventListener("keydown", (e) => { if (e.key === "Enter") submitMan
 startBtn.addEventListener("click", startCamera);
 stopBtn.addEventListener("click", stopCamera);
 document.getElementById("reload-btn").addEventListener("click", loadCollection);
+// Export downloads: the server sends Content-Disposition, so navigating triggers a
+// download (and carries the page's Basic Auth) without leaving the page.
+document.getElementById("export-csv").addEventListener("click", () => {
+  window.location.href = "/api/export.csv";
+});
+document.getElementById("export-json").addEventListener("click", () => {
+  window.location.href = "/api/export.json";
+});
