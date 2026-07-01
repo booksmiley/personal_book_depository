@@ -709,13 +709,16 @@ function renderSearchResults(q, results) {
           <small>${meta}<br />ISBN ${esc(b.isbn)}</small></span>
         </button>`;
     })
-    .join("")}</div>`;
+    .join("")}</div>
+    <button class="sr-cancel">${esc(T("act_cancel"))}</button>`;
   resultEl.querySelectorAll(".search-result").forEach((el) => {
     el.addEventListener("click", () => {
       titleInput.value = "";
       lookupForRegister(results[Number(el.dataset.i)].isbn); // full fetch, then Add
     });
   });
+  // Dismiss the results without choosing — clears the list and resumes scanning.
+  resultEl.querySelector(".sr-cancel").addEventListener("click", () => resumeScanning());
 }
 
 titleGo.addEventListener("click", submitTitleSearch);
