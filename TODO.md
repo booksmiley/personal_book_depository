@@ -22,10 +22,10 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   the GIL) doesn't block borrow/return — verified a 2s lookup didn't stall a concurrent
   request. (Threads, not async: lookups are I/O-bound, so async would be a big rewrite for
   no gain at this scale.)
-- **Backfill tool** (`backfill_metadata.py`): re-query every book via the combined sources
+- **Backfill tool** (`scripts/backfill_metadata.py`): re-query every book via the combined sources
   to fill EMPTY fields (e.g. `language` on rows registered before it existed); never
   overwrites existing values. `--dry-run` / `--fields` / `--limit`.
-- **Source checker** (`check_sources.py`): probe each metadata source's connectivity vs a
+- **Source checker** (`scripts/check_sources.py`): probe each metadata source's connectivity vs a
   known ISBN, or all sources against one ISBN. ISBNnet is gated to Taiwan ISBNs
   (957/986/626/627) so it's a silent no-op for others — that's why it can look absent in a
   backfill of mostly non-Taiwan books.

@@ -4,10 +4,10 @@ Useful after adding sources or a new field (e.g. `language`): rows registered be
 the field/source existed get backfilled. Only empty fields are filled — existing
 values (including manual admin edits) are never overwritten.
 
-    python backfill_metadata.py                  # fill empty fields for every book
-    python backfill_metadata.py --dry-run        # show what would change, write nothing
-    python backfill_metadata.py --fields language  # only backfill specific field(s)
-    python backfill_metadata.py --limit 5        # first 5 books (handy for a test run)
+    python scripts/backfill_metadata.py                  # fill empty fields for every book
+    python scripts/backfill_metadata.py --dry-run        # show what would change, write nothing
+    python scripts/backfill_metadata.py --fields language  # only backfill specific field(s)
+    python scripts/backfill_metadata.py --limit 5        # first 5 books (handy for a test run)
 
 Data dir comes from BOOK_DATA_DIR (defaults to the project's data/ dir), same as the
 app. The per-host scraper throttle applies, so this is safe to run over a whole library
@@ -17,7 +17,13 @@ app. The per-host scraper throttle applies, so this is safe to run over a whole 
 import argparse
 import logging
 import os
+import sys
 from pathlib import Path
+
+# scripts/ live one level under the project root; add it to the path so the
+# book_depository package imports work when run as `python scripts/backfill_metadata.py`.
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
 
 
 def _load_config_env() -> None:
@@ -26,7 +32,7 @@ def _load_config_env() -> None:
     means Google Books' generous authenticated rate limit instead of the low anonymous
     one, which is what causes 429s during a bulk backfill. (Needs pyyaml — installed
     via requirements-local.txt.)"""
-    cfg_path = Path(__file__).resolve().parent / "local_config" / "config.yml"
+    cfg_path = _ROOT / "local_config" / "config.yml"
     if not cfg_path.exists():
         return
     try:

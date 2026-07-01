@@ -63,11 +63,11 @@ SQLite `ADD COLUMN` can't add `NOT NULL` (without a constant default), `UNIQUE`,
 before the first run.
 
 After adding a new field or source, backfill existing rows with
-`python backfill_metadata.py` (re-queries the combined sources, fills **empty** fields
+`python scripts/backfill_metadata.py` (re-queries the combined sources, fills **empty** fields
 only; `--dry-run` to preview).
 
-Check which sources are reachable with `python check_sources.py` (each source vs a
-known ISBN), or `python check_sources.py <ISBN>` to test all sources against one book.
+Check which sources are reachable with `python scripts/check_sources.py` (each source vs a
+known ISBN), or `python scripts/check_sources.py <ISBN>` to test all sources against one book.
 Note: ISBNnet only answers Taiwan ISBNs (957/986/626/627), so it's silent for others.
 
 ## Run on your laptop

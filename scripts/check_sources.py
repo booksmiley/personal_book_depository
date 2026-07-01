@@ -1,4 +1,4 @@
-"""Check connectivity to each metadata source. Run: python check_sources.py [ISBN]
+"""Check connectivity to each metadata source. Run: python scripts/check_sources.py [ISBN]
 
 With no argument, hits each source with a known ISBN it should have, so you can see
 which sources are reachable from your network right now (ISBNnet / Douban can be slow
@@ -15,11 +15,16 @@ import os
 import sys
 from pathlib import Path
 
+# scripts/ live one level under the project root; add it to the path so the
+# book_depository package imports work when run as `python scripts/check_sources.py`.
+_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_ROOT))
+
 
 def _load_key() -> None:
     """Load GOOGLE_BOOKS_API_KEY from local_config/config.yml before importing metadata
     (so the Google check uses your authenticated quota, not the anonymous one)."""
-    cfg = Path(__file__).resolve().parent / "local_config" / "config.yml"
+    cfg = _ROOT / "local_config" / "config.yml"
     if not cfg.exists() or os.environ.get("GOOGLE_BOOKS_API_KEY"):
         return
     try:
