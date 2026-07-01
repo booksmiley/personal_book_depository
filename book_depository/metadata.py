@@ -16,6 +16,7 @@ from enum import Enum
 
 import httpx
 
+from book_depository import throttle
 from book_depository.douban import fetch_douban_metadata
 from book_depository.isbn import isbn13_to_isbn10
 from book_depository.isbnnet import fetch_isbnnet_metadata
@@ -27,6 +28,11 @@ GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 GOOGLE_BOOKS_COUNTRY = os.environ.get("GOOGLE_BOOKS_COUNTRY", "US")
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
+# Throttle these APIs per host too (not just the scrapers) — a backfill loops over
+# every book and would otherwise burst Google Books into a 429. Google's own throttle
+# is keyed on the host, so the google source and the cover lookup share the same pace.
+_GOOGLE_HOST = "www.googleapis.com"
+_OPENLIB_HOST = "openlibrary.org"
 COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
 OPEN_LIBRARY_AUTHORS_URL = "https://openlibrary.org{key}.json"
 
@@ -70,7 +76,7 @@ async def fetch_book_metadata(isbn: str) -> Book | None:
     merged: Book | None = None
     contributors: list[str] = []
 
-    for source in (_from_isbnnet, _from_douban, _from_open_library, _from_google_books):
+    for source in (_from_isbnnet, _from_open_library, _from_douban, _from_google_books):
         try:
             book = await source(isbn)
         except Exception as err:  # network OR parse hiccup — skip, try the next source
@@ -113,6 +119,7 @@ async def resolve_open_lib_authors(authors_refs: list) -> str:
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         for ref in authors_refs:
             ref_key = ref["key"]
+            await throttle.wait_async(_OPENLIB_HOST)
             resp = await client.get(OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key))
             log.debug("author lookup %s -> HTTP %s", ref_key, resp.status_code)
             authors.append(resp.json().get("name", ""))
@@ -120,6 +127,7 @@ async def resolve_open_lib_authors(authors_refs: list) -> str:
 
 
 async def _from_open_library(isbn: str) -> Book | None:
+    await throttle.wait_async(_OPENLIB_HOST)
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         resp = await client.get(OPEN_LIBRARY_URL.format(isbn=isbn))
     log.debug("open library %s -> HTTP %s", isbn, resp.status_code)
@@ -172,6 +180,7 @@ async def _google_books_volume(isbn: str) -> dict | None:
     params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
     if GOOGLE_BOOKS_API_KEY:
         params["key"] = GOOGLE_BOOKS_API_KEY
+    await throttle.wait_async(_GOOGLE_HOST)
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         resp = await client.get(GOOGLE_BOOKS_URL, params=params)
     items = resp.json().get("items")
@@ -207,7 +216,6 @@ async def _from_douban(isbn: str) -> Book | None:
         cover_url=await _cover_url(isbn),  # Douban blocks hotlinking; use GB or OL
         publisher=data["publisher"],
         year=data["year"],
-        language="zh-Hans",  # mainland Douban = Simplified Chinese
         source=ApiSource.douban.value,
     )
 
@@ -218,6 +226,7 @@ async def _cover_url(isbn: str) -> str:
         params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
         if GOOGLE_BOOKS_API_KEY:
             params["key"] = GOOGLE_BOOKS_API_KEY
+        await throttle.wait_async(_GOOGLE_HOST)
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
             resp = await client.get(GOOGLE_BOOKS_URL, params=params)
         items = resp.json().get("items")

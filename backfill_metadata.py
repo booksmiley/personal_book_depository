@@ -17,9 +17,36 @@ app. The per-host scraper throttle applies, so this is safe to run over a whole 
 import argparse
 import asyncio
 import logging
+import os
+from pathlib import Path
 
-from book_depository.db import get_all_books, get_db, update_book
-from book_depository.metadata import fetch_book_metadata
+
+def _load_config_env() -> None:
+    """Pull the Google Books key (and data dir) from local_config/config.yml into the
+    environment BEFORE the modules that read them at import time. Uses the API key means
+    Google Books' generous authenticated rate limit instead of the low anonymous one,
+    which is what causes 429s during a bulk backfill."""
+    cfg_path = Path(__file__).resolve().parent / "local_config" / "config.yml"
+    if not cfg_path.exists():
+        return
+    try:
+        import yaml
+
+        cfg = yaml.safe_load(cfg_path.read_text()) or {}
+    except Exception:
+        return
+    key = cfg.get("GOOGLE_BOOKS_API_KEY") or cfg.get("google_books_api_key")
+    if key and not os.environ.get("GOOGLE_BOOKS_API_KEY"):
+        os.environ["GOOGLE_BOOKS_API_KEY"] = key
+    data_dir = cfg.get("data_dir")
+    if data_dir and not os.environ.get("BOOK_DATA_DIR"):
+        os.environ["BOOK_DATA_DIR"] = os.path.expanduser(data_dir)
+
+
+_load_config_env()  # must run before the imports below (they read env at import time)
+
+from book_depository.db import get_all_books, get_db, update_book  # noqa: E402
+from book_depository.metadata import fetch_book_metadata  # noqa: E402
 
 DEFAULT_OWNER = "lib_admin"
 # Fields the combined sources can supply and that we're willing to backfill.
