@@ -11,8 +11,9 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
   for shaky shots, type an ISBN (10 or 13), or **search by title** (register mode) and
   pick a match to add.
 - **Metadata** — ISBNnet (Taiwan) → Douban (mainland China) → Open Library →
-  Google Books, **combined** in priority order (each source fills the previous one's
-  gaps) until the core fields are complete; includes a language tag.
+  Google Books (+ an optional extra source), **combined** in priority order (each source
+  fills the previous one's gaps) until the core fields are complete; includes a language
+  tag. Per-provider modules live in `book_depository/sources/`.
 - **Register / borrow / return** — copies tracked per book; each loan names a
   borrower; return closes the exact loan you pick.
 - **Collection** — grid or list view; tap a book to borrow/return inline, and choose
@@ -32,8 +33,8 @@ browser (thin)                     python
 ──────────────                     ──────────────────────────────────────
 camera + decode EAN-13   ──GET──>  /api/lookup/<isbn>
   static/scan.js                     book_depository/isbn.py    (validate)
-                                      book_depository/metadata.py (fetch)
-                                        └─ isbnnet → douban → open library → google
+                                      book_depository/metadata.py (combine)
+                                        └─ sources/: isbnnet → douban → open library → google → …
 
 Register mode            ──POST─>  /api/register/<isbn>
                                      book_depository/db.py       (write)
