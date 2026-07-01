@@ -28,7 +28,7 @@ BACKUP_DIR = os.environ.get("BOOK_BACKUP_DIR", "")
 
 
 BOOK_QUERY_BY_ISBN = "SELECT * FROM books WHERE isbn = ?"
-BOOK_INSERT = "INSERT INTO books (isbn, title, author, cover_url, publisher, year, source, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+BOOK_INSERT = "INSERT INTO books (isbn, title, author, cover_url, publisher, year, source, language, added_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))"
 BOOK_UPDATE_COPY = (
     "UPDATE books SET total_count = total_count + 1, available = available + 1 "
     "WHERE isbn = ?"

@@ -309,14 +309,14 @@ const HIDDEN_COLUMNS = new Set(["book_id", "cover_url"]);
 const COLUMN_LABELS = {
   isbn: "ISBN", title: "Title", author: "Author", publisher: "Publisher",
   year: "Year", language: "Language", source: "Source",
-  total_count: "Copies", available: "Available",
+  total_count: "Copies", available: "Available", added_at: "Added",
 };
 const DEFAULT_COLUMNS = ["title", "author", "year", "publisher", "available"];
 // User-friendly column order (the API returns keys alphabetically). Any column not
 // listed here — e.g. a future migration field — is appended after these.
 const COLUMN_ORDER = [
   "title", "author", "year", "publisher", "language",
-  "isbn", "source", "total_count", "available",
+  "isbn", "source", "added_at", "total_count", "available",
 ];
 
 let visibleColumns =

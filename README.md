@@ -56,7 +56,7 @@ never twice.
 To change the schema, add the next-numbered file and deploy:
 
 ```sql
--- db_lib/0003_add_book_tags.sql
+-- db_lib/0004_add_book_tags.sql
 ALTER TABLE books ADD COLUMN tags TEXT;
 ```
 

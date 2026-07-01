@@ -43,6 +43,8 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   whitelisted fields; logged.
 - **Schema migrations** (`db_lib/NNNN_*.sql`): applied per-connection, tracked by
   `PRAGMA user_version`, each in one transaction. Add a column = drop a file, deploy.
+  `0003` adds `added_at` (book insert time) — existing rows backfilled with the
+  migration time; new rows set it in `BOOK_INSERT` (`datetime('now')`).
 - **Durable persistence (Litestream)**: deployed on Render via Docker; replicates SQLite
   → Cloudflare R2, restores on boot (WAL mode, `--workers 1 --threads 8` — one process
   keeps Litestream's single writer; threads serve concurrent requests). Verified live.

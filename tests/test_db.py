@@ -76,6 +76,40 @@ def test_concurrent_borrow_never_overborrows(conn, book):
     assert db.find_book_by_isbn(conn, ISBN)["available"] == 0
 
 
+def test_new_book_records_added_at(conn, book):
+    db.add_book(conn, book())
+    row = db.find_book_by_isbn(conn, ISBN)
+    assert row["added_at"]  # set by BOOK_INSERT's datetime('now')
+    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 3
+
+
+def test_added_at_migration_backfills_existing_rows(data_dir):
+    import sqlite3
+
+    from db_lib import run_migrations
+
+    # A legacy DB at user_version 2 (pre-added_at) with a row already in it.
+    path = data_dir / "legacy.sqlite"
+    raw = sqlite3.connect(path)
+    raw.executescript(
+        "CREATE TABLE books (book_id INTEGER PRIMARY KEY, isbn TEXT UNIQUE, title TEXT,"
+        " author TEXT, cover_url TEXT, publisher TEXT, year TEXT, source TEXT,"
+        " language TEXT, total_count INTEGER DEFAULT 1, available INTEGER DEFAULT 1);"
+        " INSERT INTO books (isbn, title) VALUES ('9780000000009', 'Legacy');"
+        " PRAGMA user_version = 2;"
+    )
+    raw.commit()
+
+    run_migrations(raw)  # applies 0003 only
+
+    assert raw.execute("PRAGMA user_version").fetchone()[0] == 3
+    added = raw.execute(
+        "SELECT added_at FROM books WHERE isbn = '9780000000009'"
+    ).fetchone()[0]
+    assert added  # existing row backfilled with the migration time
+    raw.close()
+
+
 def test_migrations_run_and_are_idempotent(data_dir):
     c1 = db.get_db("mtest")
     v1 = c1.execute("PRAGMA user_version").fetchone()[0]
