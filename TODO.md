@@ -1,8 +1,13 @@
 # Project status & TODO
 
 _Lean church library: scan ISBN → register / borrow / return. Website-only, phone
-camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
-(Claude owns frontend; user writes Python). Brief: `~/Downloads/church-library-brief.md`._
+camera as scanner. **Quart (async)** + stdlib sqlite3 (DB-per-owner); zero-build JS
+frontend (Claude owns frontend; user writes Python). Brief: `~/Downloads/church-library-brief.md`._
+
+_**Branch `async-design`**: metadata lookups use async httpx and the server is
+hypercorn (ASGI, single async worker), so a slow lookup yields the event loop instead
+of blocking borrow/return. DB stays sync sqlite (sub-ms calls run directly on the loop).
+`master` uses the sync Flask + gunicorn `--threads` design instead._
 
 ## Done & working
 
@@ -18,10 +23,9 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
 - **Concurrency**: borrow/return use atomic conditional `UPDATE`s — no over-borrow or
   double-return (tested with 20 racing threads). Register race caught (`IntegrityError`
   → graceful "exists"); migration race fixed (`BEGIN IMMEDIATE` + re-check `user_version`
-  under the lock). Server runs `--threads` so a slow metadata lookup (network I/O releases
-  the GIL) doesn't block borrow/return — verified a 2s lookup didn't stall a concurrent
-  request. (Threads, not async: lookups are I/O-bound, so async would be a big rewrite for
-  no gain at this scale.)
+  under the lock). Async server (hypercorn) serves requests concurrently on one event
+  loop, so a slow metadata lookup (awaited httpx) doesn't block borrow/return — verified
+  a 2s lookup let a concurrent /api/books return in 0.02s.
 - **Backfill tool** (`backfill_metadata.py`): re-query every book via the combined sources
   to fill EMPTY fields (e.g. `language` on rows registered before it existed); never
   overwrites existing values. `--dry-run` / `--fields` / `--limit`.

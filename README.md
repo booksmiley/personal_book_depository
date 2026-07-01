@@ -3,7 +3,8 @@
 A lean library app for a personal book collection or a community library. Scan a book's barcode with your phone →
 register, borrow, or return it. Runs in the browser, no app installation needed.
 
-Stack: Python + Flask + SQLite, zero-build JS frontend.
+Stack: Python + Quart (async) + SQLite, zero-build JS frontend. Metadata lookups use
+async `httpx`, so a slow lookup never blocks borrow/return.
 
 ## Features
 
@@ -133,11 +134,11 @@ Register a book, then check: a `LEDGER {...}` line in Render **Logs**, a `lib_ad
 path in your R2 bucket, and that the book survives a **Manual Deploy** (restored from
 R2).
 
-**Notes:** runs `gunicorn --workers 1 --threads 8` — one process keeps Litestream's
-single writer, while threads serve requests concurrently so a slow metadata lookup
-doesn't block borrow/return. The `LEDGER` log lines are an independent record you can
-replay to rebuild the DB if the bucket is ever lost. Free-tier cold starts take
-~30–60 s after idle.
+**Notes:** runs `hypercorn --workers 1` (ASGI) — a single async worker serves requests
+concurrently on one event loop, so a slow metadata lookup doesn't block borrow/return,
+and one process keeps Litestream's single writer. The `LEDGER` log lines are an
+independent record you can replay to rebuild the DB if the bucket is ever lost.
+Free-tier cold starts take ~30–60 s after idle.
 
 ## Config reference
 
