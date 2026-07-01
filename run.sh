@@ -13,11 +13,9 @@ if [ ! -f "$DB" ]; then
   litestream restore -if-replica-exists -config /etc/litestream.yml "$DB"
 fi
 
-# 2) Replicate continuously while running gunicorn as a child process.
-#    --workers 1 keeps a SINGLE process (one Litestream writer, no WAL-checkpoint
-#    fights). --threads handles requests concurrently within that process: while one
-#    thread is blocked on a slow metadata lookup (network I/O releases the GIL),
-#    other threads can serve borrow/return. Each request uses its own SQLite
-#    connection; WAL + busy_timeout serialise the writes safely.
+# 2) Replicate continuously while running the app (hypercorn, ASGI) as a child
+#    process. A single async worker serves requests concurrently on one event loop:
+#    while one request awaits a slow metadata lookup, others (borrow/return) keep
+#    running. One process keeps Litestream's single-writer assumption intact.
 exec litestream replicate -config /etc/litestream.yml \
-  -exec "gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 8"
+  -exec "hypercorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 1"

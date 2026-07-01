@@ -15,6 +15,7 @@ app. The per-host scraper throttle applies, so this is safe to run over a whole 
 """
 
 import argparse
+import asyncio
 import logging
 
 from book_depository.db import get_all_books, get_db, update_book
@@ -27,7 +28,7 @@ FILLABLE = ("title", "author", "publisher", "year", "cover_url", "language")
 log = logging.getLogger("backfill")
 
 
-def main() -> None:
+async def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--owner", default=DEFAULT_OWNER)
     ap.add_argument("--dry-run", action="store_true", help="show changes, write nothing")
@@ -51,7 +52,7 @@ def main() -> None:
 
         for i, book in enumerate(books, 1):
             isbn = book["isbn"]
-            fetched = fetch_book_metadata(isbn)
+            fetched = await fetch_book_metadata(isbn)
             if fetched is None:
                 not_found += 1
                 log.info("[%d/%d] %s — no metadata found online", i, total, isbn)
@@ -80,4 +81,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

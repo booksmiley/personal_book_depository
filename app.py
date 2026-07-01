@@ -1,4 +1,9 @@
-"""Flask entry point — thin glue. The real logic lives in book_depository/."""
+"""Quart (async) entry point — thin glue. The real logic lives in book_depository/.
+
+Async so a slow metadata lookup (network I/O) yields the event loop and other
+requests (borrow/return) keep flowing. The DB stays sync sqlite — its calls are
+sub-millisecond, safe to run directly on the loop; only the network is awaited.
+"""
 
 import base64
 import hmac
@@ -6,7 +11,7 @@ import logging
 import os
 import sqlite3
 
-from flask import Flask, Response, abort, jsonify, render_template, request
+from quart import Quart, Response, abort, jsonify, render_template, request
 
 from book_depository.db import (
     BACKUP_DIR,
@@ -28,15 +33,13 @@ from book_depository.isbn import is_valid_isbn13, normalize_isbn, to_isbn13
 from book_depository.ledger import log_event
 from book_depository.metadata import Book, fetch_book_metadata
 
-# Show timestamped logs in the console. INFO for everything, DEBUG for our own
-# package so per-call HTTP statuses (book + author lookups) show up while testing.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logging.getLogger("book_depository").setLevel(logging.DEBUG)
 
-app = Flask(__name__)
+app = Quart(__name__)
 
 # No logins yet, so everything lands in one owner's DB. This is the single spot
 # that becomes per-user later (e.g. owner from the URL or a session).
@@ -44,8 +47,7 @@ DEFAULT_OWNER = "lib_admin"
 THEME = os.environ.get("BOOK_THEME", "apple")
 TITLE = os.environ.get("BOOK_TITLE", "Library")
 _VALID_THEMES = {"apple", "win95", "terminal"}
-# UI language for the minimal flow (menu + borrow/return/register messages). Fixed at
-# startup. "en" or "zh-Hant".
+# UI language for the minimal flow (menu + borrow/return/register messages).
 LANG = os.environ.get("BOOK_LANG", "en")
 STRINGS = get_strings(LANG)
 
@@ -56,11 +58,9 @@ def _t(key: str, **kwargs) -> str:
     return s.format(**kwargs) if kwargs else s
 
 
-# Set BOOK_PASSWORD on Render to password-protect the whole site.
-# Leave unset (or empty) for local LAN use where the network is the perimeter.
+# Set BOOK_PASSWORD to password-protect the whole site; unset = open (LAN use).
 BOOK_PASSWORD = os.environ.get("BOOK_PASSWORD", "")
-# A SEPARATE, higher-tier secret for editing/deleting records. Unset = admin
-# features disabled entirely (the buttons don't even render).
+# A SEPARATE, higher-tier secret for editing/deleting records. Unset = admin off.
 ADMIN_PASSWORD = os.environ.get("BOOK_ADMIN_PASSWORD", "")
 # "Trusted local" mode: grant admin to everyone with no password. run_local.py turns
 # this ON by default (you own the machine). NEVER set it on a public deploy.
@@ -78,7 +78,7 @@ def is_admin() -> bool:
 
 
 @app.before_request
-def check_auth():
+async def check_auth():
     if not BOOK_PASSWORD:
         return
     auth = request.headers.get("Authorization", "")
@@ -102,16 +102,16 @@ def check_auth():
 @app.errorhandler(403)
 @app.errorhandler(404)
 @app.errorhandler(409)
-def json_error(err):
+async def json_error(err):
     """Return errors as JSON so the scan page can show them."""
     return jsonify(error=err.description), err.code
 
 
 @app.get("/")
-def index():
+async def index():
     """Serve the scan page (camera lives in the browser)."""
     theme = THEME if THEME in _VALID_THEMES else "apple"
-    return render_template(
+    return await render_template(
         "scan.html",
         theme=theme,
         title=TITLE,
@@ -123,7 +123,7 @@ def index():
 
 
 @app.post("/api/admin/check")
-def admin_check():
+async def admin_check():
     """Validate an admin password so the frontend can unlock edit/delete."""
     if not is_admin():
         abort(401, "Wrong admin password.")
@@ -131,18 +131,13 @@ def admin_check():
 
 
 @app.get("/api/lookup/<raw_isbn>")
-def lookup(raw_isbn: str):
-    """The browser sends a scanned barcode here; we return normalized book JSON.
-
-    This is the seam between the browser slice and the Python body. Keep it dumb:
-    normalize -> validate -> fetch -> return. (The register flow that WRITES to the
-    DB is a separate route you'll add later — see the README.)
-    """
+async def lookup(raw_isbn: str):
+    """The browser sends a scanned barcode here; we return normalized book JSON."""
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
 
-    book = fetch_book_metadata(isbn)
+    book = await fetch_book_metadata(isbn)
     if book is None:
         abort(404, description=_t("srv_no_book"))
 
@@ -150,7 +145,7 @@ def lookup(raw_isbn: str):
 
 
 @app.post("/api/register/<raw_isbn>")
-def register(raw_isbn: str):
+async def register(raw_isbn: str):
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
@@ -162,7 +157,7 @@ def register(raw_isbn: str):
     try:
         existing = find_book_by_isbn(conn, isbn)
         if not existing:
-            posted = request.get_json(silent=True)
+            posted = await request.get_json(silent=True)
             if posted:
                 meta = Book(
                     **{
@@ -180,7 +175,7 @@ def register(raw_isbn: str):
                     }
                 )
             else:
-                meta = fetch_book_metadata(isbn)
+                meta = await fetch_book_metadata(isbn)
             if meta is None:
                 abort(404, _t("srv_no_book"))
             # Always store under the validated/converted ISBN-13, never the
@@ -222,11 +217,9 @@ def register(raw_isbn: str):
 
 
 @app.get("/api/book/<raw_isbn>")
-def book_lookup(raw_isbn: str):
-    """
-    DB lookup for borrow/return — NO network call (metadata was cached at register).
-    Returns the book AND its open loans (the return screen lists those to pick from).
-    """
+async def book_lookup(raw_isbn: str):
+    """DB lookup for borrow/return — NO network call (metadata cached at register).
+    Returns the book AND its open loans (the return screen lists those to pick from)."""
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
@@ -243,10 +236,8 @@ def book_lookup(raw_isbn: str):
 
 
 @app.post("/api/borrow/<raw_isbn>")
-def borrow(raw_isbn: str):
-    """
-    Borrow a copy under a minimal borrower label. JSON body: {"borrower": ...}.
-    """
+async def borrow(raw_isbn: str):
+    """Borrow a copy under a minimal borrower label. JSON body: {"borrower": ...}."""
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
@@ -255,7 +246,7 @@ def borrow(raw_isbn: str):
         row = find_book_by_isbn(conn, isbn)
         if row is None:
             abort(404, _t("srv_not_in_library"))
-        borrower = (request.get_json(silent=True) or {}).get("borrower", "").strip()
+        borrower = ((await request.get_json(silent=True)) or {}).get("borrower", "").strip()
         if not borrower:
             abort(400, _t("srv_borrower_required"))
         loan_id = borrow_book(conn, row["book_id"], borrower)
@@ -271,16 +262,14 @@ def borrow(raw_isbn: str):
 
 
 @app.post("/api/return/<raw_isbn>")
-def return_book_route(raw_isbn: str):
-    """
-    Close a specific open loan the user picked. JSON body: {"loan_id": ...}.
-    """
+async def return_book_route(raw_isbn: str):
+    """Close a specific open loan the user picked. JSON body: {"loan_id": ...}."""
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
     try:
-        loan_id = (request.get_json(silent=True) or {}).get("loan_id")
+        loan_id = ((await request.get_json(silent=True)) or {}).get("loan_id")
         if not loan_id:
             abort(400, _t("srv_pick_loan"))
         available = close_loan(conn, loan_id)
@@ -296,14 +285,14 @@ def return_book_route(raw_isbn: str):
 
 
 @app.patch("/api/book/<raw_isbn>")
-def edit_book(raw_isbn: str):
+async def edit_book(raw_isbn: str):
     """Admin: edit a book's metadata / copy count. JSON body = fields to change."""
     if not is_admin():
         abort(403, "Admin access required.")
     isbn = to_isbn13(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
-    payload = request.get_json(silent=True) or {}
+    payload = (await request.get_json(silent=True)) or {}
     conn = get_db(DEFAULT_OWNER)
     try:
         updated = update_book(conn, isbn, payload)
@@ -318,7 +307,7 @@ def edit_book(raw_isbn: str):
 
 
 @app.delete("/api/book/<raw_isbn>")
-def remove_book(raw_isbn: str):
+async def remove_book(raw_isbn: str):
     """Admin: delete a book and its loan history."""
     if not is_admin():
         abort(403, "Admin access required.")
@@ -337,7 +326,7 @@ def remove_book(raw_isbn: str):
 
 
 @app.get("/api/books")
-def list_books():
+async def list_books():
     conn = get_db(DEFAULT_OWNER)
     try:
         books = get_all_books(conn)
@@ -348,6 +337,5 @@ def list_books():
 
 if __name__ == "__main__":
     # localhost counts as a secure context, so the camera works here on your laptop.
-    # Phone testing over a LAN IP is BLOCKED without HTTPS — deploy, or use a tunnel
-    # (e.g. `cloudflared tunnel`), once you want to test on a real phone.
-    app.run(host="0.0.0.0", port=8000, debug=True, threaded=True)
+    # Phone testing over a LAN IP is BLOCKED without HTTPS — deploy or use a tunnel.
+    app.run(host="0.0.0.0", port=8000, debug=True)

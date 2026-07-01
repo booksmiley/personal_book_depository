@@ -61,33 +61,33 @@ def main() -> None:
     # Render these lines go to the platform logs instead, so this is local-only.
     enable_file_logging(data_dir)
 
-    # Decide the TLS context.
+    # Decide TLS. Quart's app.run takes certfile/keyfile paths (Hypercorn under the
+    # hood) — no "adhoc" mode, so point certfile/keyfile at an openssl-generated cert
+    # (see config.template.yml). Without them we fall back to plain HTTP.
     https = server.get("https", {})
     if isinstance(https, bool):  # tolerate a simple `https: true`
         https = {"enabled": https}
+    certfile = keyfile = None
     if https.get("enabled", True):
-        certfile, keyfile = https.get("certfile"), https.get("keyfile")
-        if certfile and keyfile:
+        cf, kf = https.get("certfile"), https.get("keyfile")
+        if cf and kf:
             # Resolve ~ and make relative paths relative to the project root, so it
             # works no matter which directory you launch from.
             root = Path(__file__).resolve().parent
-            certfile = str(root / os.path.expanduser(certfile))
-            keyfile = str(root / os.path.expanduser(keyfile))
-            ssl_context = (certfile, keyfile)
+            certfile = str(root / os.path.expanduser(cf))
+            keyfile = str(root / os.path.expanduser(kf))
         else:
-            ssl_context = "adhoc"  # needs the `cryptography` package
-    else:
-        ssl_context = None
+            print("WARNING: https enabled but no certfile/keyfile set — serving HTTP. "
+                  "Phone cameras need HTTPS; generate a cert (see config.template.yml).")
 
     host = server.get("host", "0.0.0.0")
     port = server.get("port", 8000)
-    scheme = "https" if ssl_context else "http"
+    scheme = "https" if certfile else "http"
     print(f"Library data: {data_dir}")
     print(f"On this Mac:  {scheme}://localhost:{port}")
     print(f"On your phone (same WiFi): {scheme}://<this-mac-LAN-IP>:{port}")
 
-    # threaded=True so a slow metadata lookup doesn't block borrow/return.
-    app.run(host=host, port=port, ssl_context=ssl_context, debug=True, threaded=True)
+    app.run(host=host, port=port, certfile=certfile, keyfile=keyfile, debug=True)
 
 
 if __name__ == "__main__":

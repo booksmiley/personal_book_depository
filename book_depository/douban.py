@@ -32,22 +32,20 @@ _HEADERS = {
 _TIMEOUT = 10
 
 
-def fetch_douban_metadata(isbn: str) -> dict | None:
+async def fetch_douban_metadata(isbn: str) -> dict | None:
     """Return a dict with keys: title, author, publisher, year, cover_url.
 
     Returns None if the book isn't found or anything goes wrong.
     """
-    import requests  # local import keeps startup fast when unused
+    import httpx  # local import keeps startup fast when unused
 
-    throttle.wait(_HOST)  # space out hits so Douban doesn't rate-limit / block us
+    await throttle.wait_async(_HOST)  # pace hits so Douban doesn't block us
     try:
-        resp = requests.get(
-            _URL.format(isbn=isbn),
-            headers=_HEADERS,
-            timeout=_TIMEOUT,
-            allow_redirects=True,
-        )
-    except requests.RequestException as err:
+        async with httpx.AsyncClient(
+            timeout=_TIMEOUT, headers=_HEADERS, follow_redirects=True
+        ) as client:
+            resp = await client.get(_URL.format(isbn=isbn))
+    except httpx.HTTPError as err:
         log.warning("douban request failed for %s: %s", isbn, err)
         return None
 

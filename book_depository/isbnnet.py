@@ -50,24 +50,26 @@ def is_taiwan_isbn(isbn: str) -> bool:
     return len(isbn) == 13 and isbn.startswith("978") and isbn[3:6] in TAIWAN_GROUPS
 
 
-def fetch_isbnnet_metadata(isbn: str) -> dict | None:
+async def fetch_isbnnet_metadata(isbn: str) -> dict | None:
     """Return {title, author, publisher, year} for a Taiwan ISBN, else None."""
-    import requests  # local import keeps startup fast when unused
+    import httpx  # local import keeps startup fast when unused
 
     if not is_taiwan_isbn(isbn):
         return None  # not a Taiwan ISBN — skip without touching the network
 
-    throttle.wait(_HOST)  # space out hits to the NCL registry
+    await throttle.wait_async(_HOST)  # pace hits to the NCL registry
     try:
-        with requests.Session() as session:
-            session.headers.update(_HEADERS)
-            index = session.get(_INDEX, timeout=_TIMEOUT)
+        # One AsyncClient keeps the session cookie across the CSRF GET and the POST.
+        async with httpx.AsyncClient(
+            timeout=_TIMEOUT, headers=_HEADERS, follow_redirects=True
+        ) as client:
+            index = await client.get(_INDEX)
             token = _csrf_token(index.text)
             if not token:
                 log.debug("isbnnet: no csrf token for %s", isbn)
                 return None
-            resp = session.post(_SEARCH, data=_search_form(isbn, token), timeout=_TIMEOUT)
-    except requests.RequestException as err:
+            resp = await client.post(_SEARCH, data=_search_form(isbn, token))
+    except httpx.HTTPError as err:
         log.warning("isbnnet request failed for %s: %s", isbn, err)
         return None
 

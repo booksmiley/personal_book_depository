@@ -1,4 +1,4 @@
-flask>=3.0
-requests>=2.31
-gunicorn>=21.2
+quart>=0.19
+httpx>=0.27
+hypercorn>=0.16
 beautifulsoup4>=4.12
