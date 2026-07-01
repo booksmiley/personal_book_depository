@@ -202,6 +202,15 @@ button:disabled { opacity: 0.32; cursor: default; }
 .book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.75rem; align-items: start; }
 @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
+/* Manual entry (admin) */
+#manual-book { margin-top: 0.5rem; }
+#manual-book-form { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.4rem; }
+#manual-book-form input { font-size: 0.9rem; padding: 0.5rem 0.7rem; border: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow); outline: none; color: var(--g1); }
+#manual-book-form input:focus { box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.25); }
+#manual-book-form .mb-row { display: flex; gap: 0.4rem; }
+#manual-book-form .mb-row input { flex: 1; min-width: 0; }
+#mb-copies { max-width: 5em; flex: 0 0 auto !important; }
+
 /* List view */
 .book-list { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .book-list th { text-align: left; padding: 0.5rem 0.75rem; color: var(--g3); border-bottom: 2px solid var(--g5); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }

@@ -36,6 +36,23 @@
                  placeholder="{{ strings.ph_title }}" maxlength="120" autocomplete="off" />
           <button id="title-go">{{ strings.btn_search }}</button>
         </div>
+        <div id="manual-book" hidden>
+          <button id="manual-book-toggle" class="view-btn">{{ strings.btn_add_manual }}</button>
+          <div id="manual-book-form" hidden>
+            <input id="mb-title" type="text" placeholder="{{ strings.mb_title }}" maxlength="200" autocomplete="off" />
+            <input id="mb-author" type="text" placeholder="{{ strings.mb_author }}" maxlength="200" autocomplete="off" />
+            <input id="mb-publisher" type="text" placeholder="{{ strings.mb_publisher }}" maxlength="200" autocomplete="off" />
+            <div class="mb-row">
+              <input id="mb-year" type="text" placeholder="{{ strings.mb_year }}" maxlength="20" autocomplete="off" />
+              <input id="mb-isbn" type="text" placeholder="{{ strings.mb_isbn }}" maxlength="20" autocomplete="off" />
+              <input id="mb-copies" type="number" min="1" value="1" title="{{ strings.mb_copies }}" />
+            </div>
+            <div class="mb-row">
+              <button id="mb-save">{{ strings.mb_save }}</button>
+              <button id="mb-cancel">{{ strings.act_cancel }}</button>
+            </div>
+          </div>
+        </div>
         <section id="result"></section>
       </div>
       <canvas id="snap-canvas" hidden></canvas>

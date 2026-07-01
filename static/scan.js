@@ -17,6 +17,17 @@ const manualGo = document.getElementById("manual-go");
 const titleSearch = document.getElementById("title-search");
 const titleInput = document.getElementById("title-input");
 const titleGo = document.getElementById("title-go");
+const manualBook = document.getElementById("manual-book");
+const manualBookToggle = document.getElementById("manual-book-toggle");
+const manualBookForm = document.getElementById("manual-book-form");
+const mb = {
+  title: document.getElementById("mb-title"),
+  author: document.getElementById("mb-author"),
+  publisher: document.getElementById("mb-publisher"),
+  year: document.getElementById("mb-year"),
+  isbn: document.getElementById("mb-isbn"),
+  copies: document.getElementById("mb-copies"),
+};
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const cameraUi = document.getElementById("camera-ui");
@@ -367,9 +378,11 @@ const isAdmin = () => adminOpen || !!adminPassword;
 const adminHeaders = () => (adminPassword ? { "X-Admin-Password": adminPassword } : {});
 
 function refreshAdminBtn() {
-  if (!adminBtn) return;
-  adminBtn.textContent = isAdmin() ? "🔓 Admin ✓" : "🔒 Admin";
-  adminBtn.classList.toggle("active", isAdmin());
+  if (adminBtn) {
+    adminBtn.textContent = isAdmin() ? "🔓 Admin ✓" : "🔒 Admin";
+    adminBtn.classList.toggle("active", isAdmin());
+  }
+  syncModeUi(); // admin state gates the manual-entry form in register mode
 }
 refreshAdminBtn();
 
@@ -671,6 +684,8 @@ function syncModeUi() {
   cameraUi.hidden = mode === "collection";
   collectionEl.hidden = mode !== "collection";
   titleSearch.hidden = mode !== "register"; // title search only makes sense for adding
+  manualBook.hidden = !(mode === "register" && isAdmin()); // admin-only manual entry
+  if (manualBook.hidden) manualBookForm.hidden = true;
 }
 document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", () => {
@@ -735,11 +750,51 @@ function renderSearchResults(q, results) {
 titleGo.addEventListener("click", submitTitleSearch);
 titleInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitTitleSearch(); });
 
+// --- Manual entry (admin): add a book with no ISBN or one not found online ---
+manualBookToggle.addEventListener("click", () => {
+  manualBookForm.hidden = !manualBookForm.hidden;
+  if (!manualBookForm.hidden) mb.title.focus();
+});
+document.getElementById("mb-cancel").addEventListener("click", () => {
+  manualBookForm.hidden = true;
+});
+document.getElementById("mb-save").addEventListener("click", submitManualBook);
+
+async function submitManualBook() {
+  const title = mb.title.value.trim();
+  if (!title) {
+    mb.title.focus();
+    return;
+  }
+  const body = {
+    title,
+    author: mb.author.value.trim(),
+    publisher: mb.publisher.value.trim(),
+    year: mb.year.value.trim(),
+    isbn: mb.isbn.value.trim(),
+    total_count: parseInt(mb.copies.value, 10) || 1,
+  };
+  try {
+    const data = await postJson("/api/register-manual", body, adminHeaders());
+    Object.values(mb).forEach((el) => (el.value = ""));
+    mb.copies.value = "1";
+    manualBookForm.hidden = true;
+    const t = (data.book && data.book.title) || title;
+    setStatus(T(data.status === "exists" ? "st_exists" : "st_manual_added", { title: t }));
+    if (cachedBooks) loadCollection(); // keep the collection fresh for when you switch
+  } catch (err) {
+    setStatus(err.message);
+  }
+}
+
 // POST helper: send JSON (optional), return parsed JSON or throw with the message.
-async function postJson(url, body) {
+async function postJson(url, body, extraHeaders) {
   const resp = await fetch(url, {
     method: "POST",
-    headers: body ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+      ...(extraHeaders || {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await resp.json().catch(() => ({}));

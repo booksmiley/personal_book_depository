@@ -192,6 +192,15 @@ button:disabled { opacity: 0.3; cursor: default; }
 .book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6rem; align-items: start; }
 @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
+/* Manual entry (admin) */
+#manual-book { margin-top: 0.5rem; }
+#manual-book-form { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
+#manual-book-form input { font-family: inherit; font-size: 0.82rem; padding: 5px 8px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
+#manual-book-form input:focus { border-color: var(--accent); }
+#manual-book-form .mb-row { display: flex; gap: 5px; }
+#manual-book-form .mb-row input { flex: 1; min-width: 0; }
+#mb-copies { max-width: 5em; flex: 0 0 auto !important; }
+
 .book-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.12s; }
 .book-card:hover { border-color: var(--dim); }
 .book-card img { width: 100%; aspect-ratio: 2 / 3; object-fit: cover; display: block; }

@@ -16,10 +16,10 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
   tag. Per-provider modules live in `book_depository/sources/`.
 - **Register / borrow / return** — copies tracked per book; each loan names a
   borrower; return closes the exact loan you pick.
-- **Collection** — grid or list view; tap a book to borrow/return inline, and choose
-  which columns the list shows.
-- **Admin mode** — set an admin password to edit or delete records from the
-  collection page.
+- **Collection** — grid or list view; tap a book to borrow/return inline, choose
+  which columns the list shows, and export the whole catalog as CSV or JSON.
+- **Admin mode** — set an admin password to edit or delete records, and to **add
+  books manually** (no ISBN needed — for books not found online).
 - **Themes & language** — `apple` / `win95` / `terminal`; UI language `en` or
   `zh-Hant` (繁體) for the borrow/return menu and messages, via `BOOK_LANG`.
 - **Durable on Render** — Litestream replicates SQLite to object storage; a JSON

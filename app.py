@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import os
+import secrets
 import sqlite3
 
 from flask import Flask, Response, abort, jsonify, render_template, request
@@ -231,6 +232,70 @@ def register(raw_isbn: str):
         log_event("copy_added", isbn=isbn, total_count=fresh["total_count"])
         backup_db(conn, BACKUP_DIR)
         return jsonify(status="copy_added", book=dict(fresh))
+    finally:
+        conn.close()
+
+
+def _synthetic_isbn() -> str:
+    """A unique local key for a book with no ISBN. Clearly not a real ISBN."""
+    return "NOISBN-" + secrets.token_hex(5).upper()
+
+
+@app.post("/api/register-manual")
+def register_manual():
+    """Admin: add a book by hand — for books with no ISBN, or ones not found online.
+    ISBN is optional (a local key is generated if omitted); only title is required."""
+    if not is_admin():
+        abort(403, "Admin access required.")
+    data = request.get_json(silent=True) or {}
+
+    title = (data.get("title") or "").strip()
+    if not title:
+        abort(400, _t("srv_title_required"))
+
+    raw_isbn = (data.get("isbn") or "").strip()
+    if raw_isbn:
+        isbn = to_isbn13(raw_isbn)
+        if isbn is None:
+            abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
+    else:
+        isbn = _synthetic_isbn()
+
+    try:
+        copies = max(1, int(data.get("total_count") or 1))
+    except (TypeError, ValueError):
+        copies = 1
+
+    book = Book(
+        isbn=isbn,
+        title=title,
+        author=(data.get("author") or "").strip(),
+        publisher=(data.get("publisher") or "").strip(),
+        year=str(data.get("year") or "").strip(),
+        language=(data.get("language") or "").strip(),
+        cover_url=(data.get("cover_url") or "").strip(),
+        source="MANUAL",
+    )
+
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        existing = find_book_by_isbn(conn, isbn)
+        if existing:
+            return jsonify(status="exists", book=dict(existing))
+        try:
+            add_book(conn, book)
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            return jsonify(status="exists", book=dict(find_book_by_isbn(conn, isbn)))
+        for _ in range(copies - 1):  # extra copies beyond the first
+            add_copy(conn, isbn)
+        fresh = find_book_by_isbn(conn, isbn)
+        log_event(
+            "book_added", isbn=isbn, title=title, author=book.author,
+            publisher=book.publisher, year=book.year, source="MANUAL",
+        )
+        backup_db(conn, BACKUP_DIR)
+        return jsonify(status="added", book=dict(fresh))
     finally:
         conn.close()
 
