@@ -25,6 +25,10 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
 - **Backfill tool** (`backfill_metadata.py`): re-query every book via the combined sources
   to fill EMPTY fields (e.g. `language` on rows registered before it existed); never
   overwrites existing values. `--dry-run` / `--fields` / `--limit`.
+- **Source checker** (`check_sources.py`): probe each metadata source's connectivity vs a
+  known ISBN, or all sources against one ISBN. ISBNnet is gated to Taiwan ISBNs
+  (957/986/626/627) so it's a silent no-op for others — that's why it can look absent in a
+  backfill of mostly non-Taiwan books.
 - **Collection**: grid or list; tap to borrow/return inline; pick & reorder columns
   (from DB keys, friendly order, persisted); click a header to sort asc/desc.
 - **Admin** (`BOOK_ADMIN_PASSWORD`; `BOOK_ADMIN_OPEN` = trusted local, on by default in
