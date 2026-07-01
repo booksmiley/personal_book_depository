@@ -13,7 +13,7 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   (`search_by_title` in metadata.py). Works for English and Chinese with the API key.
 - **Metadata** (`metadata.py` aggregates per-provider modules under
   `book_depository/sources/`): sources **combined** in priority order
-  ISBNnet → Douban → Open Library → Google Books (+ an optional extra source) — each fills
+  ISBNnet → Douban → Open Library → Google Books (+ optional extra sources) — each fills
   the previous's empty fields until core fields complete (`source` e.g. `ISBNNET+OPEN_LIB`);
   sets a `language` tag. ISBNnet = Taiwan NCL registry (Traditional Chinese, prefix-gated
   free no-op otherwise). Per-host scraper throttle (`SCRAPER_MIN_INTERVAL`). NLC dropped

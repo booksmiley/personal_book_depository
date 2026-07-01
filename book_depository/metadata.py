@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 
 from book_depository.sources import google, openlibrary
+from book_depository.sources.ccus import fetch_ccus_metadata
 from book_depository.sources.douban import fetch_douban_metadata
 from book_depository.sources.ects import fetch_ects_metadata
 from book_depository.sources.isbnnet import fetch_isbnnet_metadata
@@ -56,12 +57,14 @@ def fetch_book_metadata(isbn: str) -> Book | None:
     merged: Book | None = None
     contributors: list[str] = []
 
-    # ECTS runs last (strict-throttled), only when faster sources leave core incomplete.
+    # The niche sources run last (strict-throttled), only when the faster sources leave
+    # core incomplete — cc-us before ects (a single GET vs. a stateful search).
     for source in (
         _from_isbnnet,
         _from_douban,
         _from_open_library,
         _from_google_books,
+        _from_ccus,
         _from_ects,
     ):
         try:
@@ -146,6 +149,21 @@ def _from_douban(isbn: str) -> Book | None:
         # tell, so inferring "zh-Hans" from the source mislabels them. Leave it for
         # Google Books' accurate per-book code (or empty) to fill via the merge.
         source=ApiSource.douban.value,
+    )
+
+
+def _from_ccus(isbn: str) -> Book | None:
+    data = fetch_ccus_metadata(isbn)
+    if data is None:
+        return None
+    return Book(
+        isbn=isbn,
+        title=data["title"],
+        author=data["author"],
+        cover_url=_cover_url(isbn),
+        publisher=data["publisher"],
+        year=data["year"],
+        source=ApiSource.other.value,
     )
 
 

@@ -93,6 +93,21 @@ def to_isbn13(raw: str):
     return None
 
 
+# Registration groups where Chinese-language books live: mainland China (978-7),
+# Taiwan (957/986/626/627), Hong Kong (962/988), and US (978-1, where US-published
+# Chinese titles register). Used to gate the niche Chinese sources so they don't hit
+# the network for books they couldn't hold.
+_CJK_US_GROUPS = {"957", "986", "626", "627", "962", "988"}
+
+
+def is_chinese_or_us_isbn(isbn: str) -> bool:
+    return (
+        len(isbn) == 13
+        and isbn.startswith("978")
+        and (isbn[3] in ("7", "1") or isbn[3:6] in _CJK_US_GROUPS)
+    )
+
+
 if __name__ == "__main__":
     assert is_valid_isbn13("9780131103627")  # real ISBN -> expect True
     assert not is_valid_isbn13("9780131103628")  # bad check digit -> expect False
@@ -116,4 +131,10 @@ if __name__ == "__main__":
     assert to_isbn13("0131103629") is None  # bad ISBN-10 checksum
     assert to_isbn13("9780131103628") is None  # bad ISBN-13 checksum
     assert to_isbn13("978013110362") is None  # wrong length
+
+    # Chinese/US group gate
+    assert is_chinese_or_us_isbn("9787802546189")  # mainland China (978-7)
+    assert is_chinese_or_us_isbn("9781932184600")  # US-published Chinese (978-1)
+    assert is_chinese_or_us_isbn("9789575876241")  # Taiwan (957)
+    assert not is_chinese_or_us_isbn("9780131103627")  # 978-0 English -> False
     print("All ISBN checks passed ✅")

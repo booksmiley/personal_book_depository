@@ -7,6 +7,7 @@ import re
 from bs4 import BeautifulSoup
 
 from book_depository import throttle
+from book_depository.isbn import is_chinese_or_us_isbn
 
 log = logging.getLogger(__name__)
 
@@ -22,23 +23,12 @@ _HEADERS = {
 _TIMEOUT = 20
 _MIN_INTERVAL = float(os.environ.get("ECTS_MIN_INTERVAL", "3.0"))
 
-# Chinese-language ISBN groups (mainland 7, plus TW/HK); others skip with no request.
-_CHINESE_GROUPS = {"957", "986", "626", "627", "962", "988"}
-
-
-def is_chinese_isbn(isbn: str) -> bool:
-    return (
-        len(isbn) == 13
-        and isbn.startswith("978")
-        and (isbn[3] == "7" or isbn[3:6] in _CHINESE_GROUPS)
-    )
-
 
 def fetch_ects_metadata(isbn: str) -> dict | None:
     """Return {title, author, publisher, year}, or None."""
     import requests
 
-    if not is_chinese_isbn(isbn):
+    if not is_chinese_or_us_isbn(isbn):
         return None
 
     throttle.wait(_HOST, min_interval=_MIN_INTERVAL)
@@ -116,7 +106,9 @@ def _parse_detail(html: str) -> dict | None:
 def _split_title_resp(s: str) -> tuple[str, str]:
     if not s:
         return "", ""
-    parts = s.split("/", 1)
+    # MARC 245 separates title from responsibility with " /" (space-slash), so split on
+    # that — not any "/" — to keep title-internal slashes (e.g. "支持/反驳加尔文主义").
+    parts = re.split(r"\s+/", s, maxsplit=1)
     title = parts[0].strip().rstrip(" .：:")
     author = ""
     if len(parts) > 1:

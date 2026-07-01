@@ -11,7 +11,7 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
   for shaky shots, type an ISBN (10 or 13), or **search by title** (register mode) and
   pick a match to add.
 - **Metadata** — ISBNnet (Taiwan) → Douban (mainland China) → Open Library →
-  Google Books (+ an optional extra source), **combined** in priority order (each source
+  Google Books (+ optional extra sources), **combined** in priority order (each source
   fills the previous one's gaps) until the core fields are complete; includes a language
   tag. Per-provider modules live in `book_depository/sources/`.
 - **Register / borrow / return** — copies tracked per book; each loan names a
