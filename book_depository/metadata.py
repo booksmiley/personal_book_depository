@@ -15,6 +15,7 @@ import requests
 
 from book_depository import throttle
 from book_depository.douban import fetch_douban_metadata
+from book_depository.ects import fetch_ects_metadata
 from book_depository.isbn import isbn10_to_isbn13, isbn13_to_isbn10
 from book_depository.isbnnet import fetch_isbnnet_metadata
 
@@ -40,6 +41,7 @@ class ApiSource(Enum):
     open_lib = "OPEN_LIB"
     douban = "DOUBAN"
     isbnnet = "ISBNNET"
+    other = "OTHER"
 
 
 @dataclass
@@ -72,7 +74,14 @@ def fetch_book_metadata(isbn: str) -> Book | None:
     merged: Book | None = None
     contributors: list[str] = []
 
-    for source in (_from_isbnnet, _from_douban, _from_open_library, _from_google_books):
+    # ECTS runs last (strict-throttled), only when faster sources leave core incomplete.
+    for source in (
+        _from_isbnnet,
+        _from_douban,
+        _from_open_library,
+        _from_google_books,
+        _from_ects,
+    ):
         try:
             book = source(isbn)
         except Exception as err:  # network OR parse hiccup — skip, try the next source
@@ -215,6 +224,21 @@ def _from_douban(isbn: str) -> Book | None:
         # tell, so inferring "zh-Hans" from the source mislabels them. Leave it for
         # Google Books' accurate per-book code (or empty) to fill via the merge.
         source=ApiSource.douban.value,
+    )
+
+
+def _from_ects(isbn: str) -> Book | None:
+    data = fetch_ects_metadata(isbn)
+    if data is None:
+        return None
+    return Book(
+        isbn=isbn,
+        title=data["title"],
+        author=data["author"],
+        cover_url=_cover_url(isbn),
+        publisher=data["publisher"],
+        year=data["year"],
+        source=ApiSource.other.value,
     )
 
 
