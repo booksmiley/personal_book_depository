@@ -53,7 +53,11 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   `BOOK_TITLE`; `BOOK_LANG` = `en` or `zh-Hant` (繁體) — translates the menu +
   borrow/return/register messages (`book_depository/i18n.py`); admin/edit stay English.
 - **Security**: site Basic Auth (`BOOK_PASSWORD`) + admin tier; output escaped +
-  `https://`-only covers; parameterised SQL incl. whitelisted edit columns.
+  `https://`-only covers (http upgraded, not dropped); parameterised SQL incl.
+  whitelisted edit columns.
+- **Tests** (`tests/`, pytest, offline): ISBN helpers + metadata combine/merge (sources
+  mocked) unit tests; DB borrow/return, atomic no-over-borrow under 20 racing threads,
+  and migration idempotency integration tests. `pip install -r requirements-dev.txt && pytest`.
 
 ## Backlog
 

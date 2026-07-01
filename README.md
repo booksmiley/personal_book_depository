@@ -96,6 +96,17 @@ python run_local.py
 you tap through a one-time "Not Private" warning; install `mkcert` and point
 `certfile`/`keyfile` at its files to skip it.
 
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Offline (no network): unit tests for the ISBN helpers and the metadata combine/merge
+(sources mocked), plus integration tests for the DB — borrow/return, the atomic
+no-over-borrow guard under 20 racing threads, and migration idempotency.
+
 ## Deploy to Render (durable data)
 
 Render's free disk is wiped on redeploy and on idle spin-down, so
