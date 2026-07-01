@@ -15,7 +15,7 @@ import requests
 
 from book_depository import throttle
 from book_depository.douban import fetch_douban_metadata
-from book_depository.isbn import isbn13_to_isbn10
+from book_depository.isbn import isbn10_to_isbn13, isbn13_to_isbn10
 from book_depository.isbnnet import fetch_isbnnet_metadata
 
 log = logging.getLogger(__name__)
@@ -234,6 +234,101 @@ def _cover_url(isbn: str) -> str:
     except requests.RequestException:
         pass
     return COVER_URL.format(isbn=isbn)
+
+
+# --- Title search: return a LIST of candidates for the user to pick from ---
+OPEN_LIBRARY_SEARCH_URL = "https://openlibrary.org/search.json"
+
+
+def search_by_title(query: str, limit: int = 12) -> list[Book]:
+    """Search the API sources by title and return de-duplicated candidates, each with
+    an ISBN (so the chosen one can be registered). Google Books and Open Library both
+    return result lists; the scrapers don't, so they're not used here."""
+    query = query.strip()
+    if not query:
+        return []
+    results: list[Book] = []
+    seen: set[str] = set()
+    for search in (_title_google_books, _title_open_library):
+        try:
+            found = search(query, limit)
+        except Exception as err:  # one source failing shouldn't sink the search
+            log.warning("%s failed for %r: %s", search.__name__, query, err)
+            found = []
+        for book in found:
+            if not book.isbn or not book.title or book.isbn in seen:
+                continue
+            seen.add(book.isbn)
+            results.append(book)
+    return results[:limit]
+
+
+def _title_google_books(query: str, limit: int) -> list[Book]:
+    params = {
+        "q": query,  # general query: forgiving if the user types "title author"
+        "country": GOOGLE_BOOKS_COUNTRY,
+        "maxResults": min(limit, 20),
+    }
+    if GOOGLE_BOOKS_API_KEY:
+        params["key"] = GOOGLE_BOOKS_API_KEY
+    throttle.wait(_GOOGLE_HOST)
+    resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
+    out = []
+    for item in resp.json().get("items", []) or []:
+        info = item.get("volumeInfo", {})
+        out.append(
+            Book(
+                isbn=_isbn_from_google(info.get("industryIdentifiers", [])),
+                title=info.get("title", ""),
+                author=", ".join(info.get("authors", [])),
+                cover_url=info.get("imageLinks", {}).get("thumbnail", ""),
+                publisher=info.get("publisher", ""),
+                year=info.get("publishedDate", ""),
+                language=info.get("language", ""),
+                source=ApiSource.google.value,
+            )
+        )
+    return out
+
+
+def _isbn_from_google(identifiers: list) -> str:
+    ids = {i.get("type"): i.get("identifier", "") for i in identifiers}
+    if ids.get("ISBN_13"):
+        return ids["ISBN_13"]
+    if ids.get("ISBN_10"):
+        return isbn10_to_isbn13(ids["ISBN_10"])
+    return ""
+
+
+def _title_open_library(query: str, limit: int) -> list[Book]:
+    params = {
+        "q": query,  # general query (matches title/author), forgiving like Google
+        "limit": limit,
+        "fields": "title,author_name,first_publish_year,isbn,publisher,cover_i",
+    }
+    throttle.wait(_OPENLIB_HOST)
+    resp = requests.get(OPEN_LIBRARY_SEARCH_URL, params=params, timeout=TIMEOUT)
+    out = []
+    for doc in resp.json().get("docs", []) or []:
+        isbns = doc.get("isbn", []) or []
+        isbn13 = next((x for x in isbns if len(x) == 13 and x.startswith("978")), "")
+        cover = (
+            f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-M.jpg"
+            if doc.get("cover_i")
+            else ""
+        )
+        out.append(
+            Book(
+                isbn=isbn13,
+                title=doc.get("title", ""),
+                author=", ".join((doc.get("author_name") or [])[:3]),
+                cover_url=cover,
+                publisher=(doc.get("publisher") or [""])[0],
+                year=str(doc.get("first_publish_year") or ""),
+                source=ApiSource.open_lib.value,
+            )
+        )
+    return out
 
 
 if __name__ == "__main__":

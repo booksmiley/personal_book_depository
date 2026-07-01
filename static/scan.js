@@ -14,6 +14,9 @@ const snapBtn = document.getElementById("snap");
 const snapCanvas = document.getElementById("snap-canvas");
 const manualIsbn = document.getElementById("manual-isbn");
 const manualGo = document.getElementById("manual-go");
+const titleSearch = document.getElementById("title-search");
+const titleInput = document.getElementById("title-input");
+const titleGo = document.getElementById("title-go");
 const statusEl = document.getElementById("status");
 const resultEl = document.getElementById("result");
 const cameraUi = document.getElementById("camera-ui");
@@ -653,17 +656,70 @@ function fillCollectionActionUI(book, openLoans, container) {
 }
 
 // --- Mode switching ---
+function syncModeUi() {
+  const mode = currentMode();
+  cameraUi.hidden = mode === "collection";
+  collectionEl.hidden = mode !== "collection";
+  titleSearch.hidden = mode !== "register"; // title search only makes sense for adding
+}
 document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", () => {
-    const isCollection = currentMode() === "collection";
-    cameraUi.hidden = isCollection;
-    collectionEl.hidden = !isCollection;
-    if (isCollection) {
+    syncModeUi();
+    if (currentMode() === "collection") {
       if (scanning) stopCamera();
       loadCollection();
     }
   });
 });
+syncModeUi(); // register is checked on load — show the title search
+
+// --- Title search: find candidates by title, then register the chosen one ---
+async function submitTitleSearch() {
+  const q = titleInput.value.trim();
+  if (!q || busy) return;
+  busy = true;
+  reviewing = true; // pause barcode detection while choosing
+  setStatus(T("st_searching", { q }));
+  resultEl.innerHTML = "";
+  try {
+    const { results } = await getJson(`/api/search?q=${encodeURIComponent(q)}`);
+    renderSearchResults(q, results || []);
+  } catch (err) {
+    setStatus(err.message);
+  }
+  busy = false;
+}
+
+function renderSearchResults(q, results) {
+  if (results.length === 0) {
+    setStatus(T("st_no_results", { q }));
+    reviewing = false;
+    return;
+  }
+  setStatus(T("st_results", { n: results.length }));
+  resultEl.innerHTML = `<div class="search-results">${results
+    .map((b, i) => {
+      const cover = /^https:\/\//.test(b.cover_url || "")
+        ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy" />`
+        : `<div class="no-cover"></div>`;
+      const meta = [b.author, b.publisher, b.year].filter(Boolean).map(esc).join(" · ");
+      return `<button class="search-result" data-i="${i}">
+          ${cover}
+          <span class="sr-info"><strong>${esc(b.title || "")}</strong>
+          <small>${meta}<br />ISBN ${esc(b.isbn)}</small></span>
+        </button>`;
+    })
+    .join("")}</div>`;
+  resultEl.querySelectorAll(".search-result").forEach((el) => {
+    el.addEventListener("click", () => {
+      titleInput.value = "";
+      lookupForRegister(results[Number(el.dataset.i)].isbn); // full fetch, then Add
+    });
+  });
+}
+
+titleGo.addEventListener("click", submitTitleSearch);
+titleInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitTitleSearch(); });
 
 // POST helper: send JSON (optional), return parsed JSON or throw with the message.
 async function postJson(url, body) {

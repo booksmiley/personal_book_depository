@@ -269,3 +269,15 @@ button:disabled { opacity: 0.32; cursor: default; }
 .col-delete-btn { background: #fff; color: #d70015; box-shadow: inset 0 0 0 1px #d70015; font-size: 0.78rem; padding: 0.3rem 0.8rem; margin: 0; }
 .book-list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 .book-list th.sortable:hover { color: var(--blue); }
+
+/* Title-search candidate list */
+#title-search { display: flex; gap: 0.4rem; margin: 0.4rem 0 0; }
+#title-search input { flex: 1; font-size: 0.9rem; padding: 0.5rem 0.75rem; border: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow); outline: none; color: var(--g1); }
+#title-search input:focus { box-shadow: 0 0 0 3px rgba(0,113,227,0.25); }
+.search-results { display: flex; flex-direction: column; gap: 0.5rem; }
+.search-result { display: flex; gap: 0.7rem; align-items: center; text-align: left; width: 100%; padding: 0.5rem 0.6rem; margin: 0; background: var(--card); border: none; border-radius: var(--radius); box-shadow: var(--shadow); cursor: pointer; }
+.search-result:active { background: var(--g6); }
+.search-result img, .search-result .no-cover { width: 42px; height: 62px; object-fit: cover; flex-shrink: 0; border-radius: 6px; background: var(--g5); }
+.search-result .sr-info { flex: 1; min-width: 0; }
+.search-result strong { display: block; font-size: 0.9rem; color: var(--g1); }
+.search-result small { color: var(--g3); font-size: 0.76rem; }

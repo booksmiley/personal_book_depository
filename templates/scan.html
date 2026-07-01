@@ -31,6 +31,11 @@
                  placeholder="{{ strings.ph_manual }}" maxlength="17" autocomplete="off" />
           <button id="manual-go">{{ strings.btn_go }}</button>
         </div>
+        <div id="title-search" hidden>
+          <input id="title-input" type="text"
+                 placeholder="{{ strings.ph_title }}" maxlength="120" autocomplete="off" />
+          <button id="title-go">{{ strings.btn_search }}</button>
+        </div>
         <section id="result"></section>
       </div>
       <canvas id="snap-canvas" hidden></canvas>

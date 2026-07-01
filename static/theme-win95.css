@@ -300,3 +300,14 @@ button:disabled { opacity: 0.45; cursor: default; }
 .col-edit-btn, .col-delete-btn { font-size: 0.72rem; padding: 3px 8px; margin: 0; }
 .col-delete-btn { color: #c00000; font-weight: bold; }
 .book-list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+
+/* Title-search candidate list */
+#title-search { display: flex; gap: 4px; margin: 4px 0 0; }
+#title-search input { flex: 1; font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
+.search-results { display: flex; flex-direction: column; gap: 4px; }
+.search-result { display: flex; gap: 6px; align-items: center; text-align: left; width: 100%; padding: 4px; margin: 0; background: var(--silver); border: 2px solid; border-color: var(--hi) var(--sh) var(--sh) var(--hi); cursor: pointer; }
+.search-result:active { border-color: var(--sh) var(--hi) var(--hi) var(--sh); }
+.search-result img, .search-result .no-cover { width: 40px; height: 58px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--sh); background: #fff; }
+.search-result .sr-info { flex: 1; min-width: 0; }
+.search-result strong { display: block; font-size: 0.76rem; }
+.search-result small { color: var(--sh); font-size: 0.7rem; }

@@ -26,7 +26,7 @@ from book_depository.db import (
 from book_depository.i18n import get_strings
 from book_depository.isbn import is_valid_isbn13, normalize_isbn, to_isbn13
 from book_depository.ledger import log_event
-from book_depository.metadata import Book, fetch_book_metadata
+from book_depository.metadata import Book, fetch_book_metadata, search_by_title
 
 # Show timestamped logs in the console. INFO for everything, DEBUG for our own
 # package so per-call HTTP statuses (book + author lookups) show up while testing.
@@ -147,6 +147,17 @@ def lookup(raw_isbn: str):
         abort(404, description=_t("srv_no_book"))
 
     return jsonify(book.to_dict())
+
+
+@app.get("/api/search")
+def search():
+    """Search candidates by title (or title + author). Returns a list for the user to
+    pick from; picking one then registers it by its ISBN via the normal flow."""
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify(results=[])
+    results = search_by_title(query)
+    return jsonify(results=[b.to_dict() for b in results])
 
 
 @app.post("/api/register/<raw_isbn>")

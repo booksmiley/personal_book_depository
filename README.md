@@ -7,8 +7,9 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
 
 ## Features
 
-- **Scan / Snap / manual entry** — EAN-13 barcode, still-frame capture for shaky
-  shots, or type an ISBN (10 or 13).
+- **Scan / Snap / manual entry / title search** — EAN-13 barcode, still-frame capture
+  for shaky shots, type an ISBN (10 or 13), or **search by title** (register mode) and
+  pick a match to add.
 - **Metadata** — ISBNnet (Taiwan) → Douban (mainland China) → Open Library →
   Google Books, **combined** in priority order (each source fills the previous one's
   gaps) until the core fields are complete; includes a language tag.

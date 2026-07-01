@@ -8,6 +8,9 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
 
 - **Scan & input**: EAN-13 barcode (barcode-detector polyfill), Snap still-frame, and
   manual entry. `to_isbn13()` validates/normalises ISBN-10 or -13 → ISBN-13 everywhere.
+- **Title search** (register mode): type a title → `GET /api/search?q=` queries Google
+  Books + Open Library (candidate lists) → user taps a match → normal register flow
+  (`search_by_title` in metadata.py). Works for English and Chinese with the API key.
 - **Metadata** (`metadata.py`): sources **combined** in priority order
   ISBNnet → Douban → Open Library → Google Books — each fills the previous's empty
   fields until core fields complete (`source` e.g. `ISBNNET+OPEN_LIB`); sets a `language`
