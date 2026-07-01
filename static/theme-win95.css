@@ -228,6 +228,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 /* Grid */
 .book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 4px; align-items: start; }
+@media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* List view */
 .book-list { width: 100%; border-collapse: collapse; font-family: "Courier New", monospace; font-size: 0.76rem; }

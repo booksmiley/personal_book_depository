@@ -204,7 +204,7 @@ function bookInfoHtml(book, showCounts) {
       : "";
   const safeCover = coverSrc(book.cover_url);
   return `
-    ${safeCover ? `<img src="${esc(safeCover)}" alt="cover" />` : ""}
+    ${safeCover ? `<img src="${esc(safeCover)}" alt="cover" onerror="this.remove()" />` : ""}
     <div>
       <strong>${esc(book.title || "(no title)")}</strong><br />
       ${esc(book.author || "")}<br />
@@ -429,7 +429,7 @@ function renderGrid(books) {
     .map((book) => {
       const src = coverSrc(book.cover_url);
       const cover = src
-        ? `<img src="${esc(src)}" alt="cover" loading="lazy" />`
+        ? `<img src="${esc(src)}" alt="cover" loading="lazy" onerror="this.remove()" />`
         : `<div class="no-cover">${esc(book.title || "")}</div>`;
       const avail = book.available ?? 0;
       const total = book.total_count ?? 1;
@@ -711,7 +711,7 @@ function renderSearchResults(q, results) {
     .map((b, i) => {
       const cSrc = coverSrc(b.cover_url);
       const cover = cSrc
-        ? `<img src="${esc(cSrc)}" alt="" loading="lazy" />`
+        ? `<img src="${esc(cSrc)}" alt="" loading="lazy" onerror="this.remove()" />`
         : `<div class="no-cover"></div>`;
       const meta = [b.author, b.publisher, b.year].filter(Boolean).map(esc).join(" · ");
       return `<button class="search-result" data-i="${i}">
