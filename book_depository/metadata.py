@@ -13,6 +13,7 @@ from enum import Enum
 
 import requests
 
+from book_depository import throttle
 from book_depository.douban import fetch_douban_metadata
 from book_depository.isbn import isbn13_to_isbn10
 from book_depository.isbnnet import fetch_isbnnet_metadata
@@ -24,6 +25,10 @@ GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
 GOOGLE_BOOKS_COUNTRY = os.environ.get("GOOGLE_BOOKS_COUNTRY", "US")
 OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
 GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
+# Throttle these APIs per host too (not just the scrapers) — a backfill loops over
+# every book and would otherwise burst Google Books into a 429.
+_GOOGLE_HOST = "www.googleapis.com"
+_OPENLIB_HOST = "openlibrary.org"
 COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
 OPEN_LIBRARY_AUTHORS_URL = "https://openlibrary.org{key}.json"
 
@@ -109,6 +114,7 @@ def resolve_open_lib_authors(authors_refs: list) -> str:
     authors = []
     for ref in authors_refs:
         ref_key = ref["key"]
+        throttle.wait(_OPENLIB_HOST)
         resp = requests.get(
             OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key), timeout=TIMEOUT
         )
@@ -118,6 +124,7 @@ def resolve_open_lib_authors(authors_refs: list) -> str:
 
 
 def _from_open_library(isbn: str) -> Book | None:
+    throttle.wait(_OPENLIB_HOST)
     resp = requests.get(OPEN_LIBRARY_URL.format(isbn=isbn), timeout=TIMEOUT)
     log.debug("open library %s -> HTTP %s", isbn, resp.status_code)
     if resp.status_code == 404:
@@ -169,6 +176,7 @@ def _google_books_volume(isbn: str) -> dict | None:
     params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
     if GOOGLE_BOOKS_API_KEY:
         params["key"] = GOOGLE_BOOKS_API_KEY
+    throttle.wait(_GOOGLE_HOST)
     resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
     items = resp.json().get("items")
     if not items:
@@ -216,6 +224,7 @@ def _cover_url(isbn: str) -> str:
         params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
         if GOOGLE_BOOKS_API_KEY:
             params["key"] = GOOGLE_BOOKS_API_KEY
+        throttle.wait(_GOOGLE_HOST)
         resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
         items = resp.json().get("items")
         if items:
