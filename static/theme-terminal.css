@@ -189,7 +189,7 @@ button:disabled { opacity: 0.3; cursor: default; }
 .view-btn.active { border-color: var(--accent); color: var(--accent); }
 
 /* Grid */
-.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.6rem; align-items: start; }
+.book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6rem; align-items: start; }
 
 .book-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.12s; }
 .book-card:hover { border-color: var(--dim); }

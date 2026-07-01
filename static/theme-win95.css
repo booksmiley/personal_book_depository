@@ -227,7 +227,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .view-btn.active { border-color: var(--sh) var(--hi) var(--hi) var(--sh); box-shadow: none; background: var(--silver); font-weight: bold; }
 
 /* Grid */
-.book-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; padding: 4px; align-items: start; }
+.book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 4px; align-items: start; }
 
 /* List view */
 .book-list { width: 100%; border-collapse: collapse; font-family: "Courier New", monospace; font-size: 0.76rem; }
