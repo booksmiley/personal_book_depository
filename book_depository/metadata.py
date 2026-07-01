@@ -7,33 +7,15 @@ is the point: if an API changes or you add a third source, only this file change
 """
 
 import logging
-import os
 from dataclasses import asdict, dataclass
 from enum import Enum
 
-import requests
-
-from book_depository import throttle
+from book_depository.sources import google, openlibrary
 from book_depository.sources.douban import fetch_douban_metadata
 from book_depository.sources.ects import fetch_ects_metadata
-from book_depository.isbn import isbn10_to_isbn13, isbn13_to_isbn10
 from book_depository.sources.isbnnet import fetch_isbnnet_metadata
 
 log = logging.getLogger(__name__)
-GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")
-# Google Books returns different (sometimes empty) results depending on the caller's
-# country; pin it so results are deterministic regardless of where we deploy.
-GOOGLE_BOOKS_COUNTRY = os.environ.get("GOOGLE_BOOKS_COUNTRY", "US")
-OPEN_LIBRARY_URL = "https://openlibrary.org/isbn/{isbn}.json"
-GOOGLE_BOOKS_URL = "https://www.googleapis.com/books/v1/volumes"
-# Throttle these APIs per host too (not just the scrapers) — a backfill loops over
-# every book and would otherwise burst Google Books into a 429.
-_GOOGLE_HOST = "www.googleapis.com"
-_OPENLIB_HOST = "openlibrary.org"
-COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
-OPEN_LIBRARY_AUTHORS_URL = "https://openlibrary.org{key}.json"
-
-TIMEOUT = 10  # seconds — never let a slow API hang the request
 
 
 class ApiSource(Enum):
@@ -119,78 +101,18 @@ def _has_core(book: Book) -> bool:
     return all(getattr(book, field) for field in _CORE_FIELDS)
 
 
-def resolve_open_lib_authors(authors_refs: list) -> str:
-    authors = []
-    for ref in authors_refs:
-        ref_key = ref["key"]
-        throttle.wait(_OPENLIB_HOST)
-        resp = requests.get(
-            OPEN_LIBRARY_AUTHORS_URL.format(key=ref_key), timeout=TIMEOUT
-        )
-        log.debug("author lookup %s -> HTTP %s", ref_key, resp.status_code)
-        authors.append(resp.json().get("name", ""))
-    return ", ".join(authors)
-
-
 def _from_open_library(isbn: str) -> Book | None:
-    throttle.wait(_OPENLIB_HOST)
-    resp = requests.get(OPEN_LIBRARY_URL.format(isbn=isbn), timeout=TIMEOUT)
-    log.debug("open library %s -> HTTP %s", isbn, resp.status_code)
-    if resp.status_code == 404:
+    data = openlibrary.fetch_open_library_metadata(isbn)
+    if data is None:
         return None
-    data = resp.json()
-    # Author resolution is an extra network call (one per author). It's a
-    # nice-to-have, so a failure here must NOT sink the whole book — degrade to
-    # an empty author instead of letting the exception bubble up and null the result.
-    try:
-        authors = resolve_open_lib_authors(authors_refs=data.get("authors", []))
-    except requests.RequestException as err:
-        log.warning("author resolution failed for %s: %s", isbn, err)
-        authors = ""
-    return Book(
-        isbn=isbn,  # thread in the arg — it isn't in the response body
-        title=data.get("title", ""),
-        author=authors,
-        cover_url=COVER_URL.format(isbn=isbn),
-        publisher=data.get("publishers", [""])[0],  # OL: list, not a string
-        year=data.get("publish_date", ""),  # OL: publish_date, not publishedDate
-        source=ApiSource.open_lib.value,
-    )
+    return Book(isbn=isbn, source=ApiSource.open_lib.value, **data)
 
 
 def _from_google_books(isbn: str) -> Book | None:
-    info = _google_books_volume(isbn)
-    # Some volumes are indexed only under the ISBN-10. Retry with that form before
-    # giving up (free helper, no network unless the first query missed).
-    if info is None:
-        alt = isbn13_to_isbn10(isbn)
-        if alt:
-            info = _google_books_volume(alt)
-    if info is None:
+    data = google.fetch_google_books_metadata(isbn)
+    if data is None:
         return None
-    return Book(
-        isbn=isbn,  # thread in the arg — volumeInfo has no isbn field
-        title=info.get("title", ""),
-        author=", ".join(info.get("authors", [])),  # Google: plain name strings
-        cover_url=info.get("imageLinks", {}).get("thumbnail", ""),
-        publisher=info.get("publisher", ""),
-        year=info.get("publishedDate", ""),
-        language=info.get("language", ""),  # ISO code, e.g. "en", "zh"
-        source=ApiSource.google.value,
-    )
-
-
-def _google_books_volume(isbn: str) -> dict | None:
-    """Return the first matching volumeInfo dict for an ISBN, or None."""
-    params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
-    if GOOGLE_BOOKS_API_KEY:
-        params["key"] = GOOGLE_BOOKS_API_KEY
-    throttle.wait(_GOOGLE_HOST)
-    resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
-    items = resp.json().get("items")
-    if not items:
-        return None
-    return items[0]["volumeInfo"]
+    return Book(isbn=isbn, source=ApiSource.google.value, **data)
 
 
 def _from_isbnnet(isbn: str) -> Book | None:
@@ -243,25 +165,15 @@ def _from_ects(isbn: str) -> Book | None:
 
 
 def _cover_url(isbn: str) -> str:
-    """Return a hotlink-friendly cover URL: Google Books thumbnail, else Open Library."""
-    try:
-        params = {"q": f"isbn:{isbn}", "country": GOOGLE_BOOKS_COUNTRY}
-        if GOOGLE_BOOKS_API_KEY:
-            params["key"] = GOOGLE_BOOKS_API_KEY
-        throttle.wait(_GOOGLE_HOST)
-        resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
-        items = resp.json().get("items")
-        if items:
-            url = items[0]["volumeInfo"].get("imageLinks", {}).get("thumbnail", "")
-            if url:
-                return url
-    except requests.RequestException:
-        pass
-    return COVER_URL.format(isbn=isbn)
+    """Hotlink-friendly cover URL: Google Books thumbnail, else Open Library."""
+    return google.thumbnail(isbn) or openlibrary.cover_url(isbn)
 
 
 # --- Title search: return a LIST of candidates for the user to pick from ---
-OPEN_LIBRARY_SEARCH_URL = "https://openlibrary.org/search.json"
+_TITLE_SEARCHERS = (
+    (google.search_google_books, ApiSource.google),
+    (openlibrary.search_open_library, ApiSource.open_lib),
+)
 
 
 def search_by_title(query: str, limit: int = 12) -> list[Book]:
@@ -273,86 +185,19 @@ def search_by_title(query: str, limit: int = 12) -> list[Book]:
         return []
     results: list[Book] = []
     seen: set[str] = set()
-    for search in (_title_google_books, _title_open_library):
+    for search, src in _TITLE_SEARCHERS:
         try:
             found = search(query, limit)
         except Exception as err:  # one source failing shouldn't sink the search
             log.warning("%s failed for %r: %s", search.__name__, query, err)
             found = []
-        for book in found:
-            if not book.isbn or not book.title or book.isbn in seen:
+        for cand in found:
+            isbn = cand.get("isbn", "")
+            if not isbn or not cand.get("title") or isbn in seen:
                 continue
-            seen.add(book.isbn)
-            results.append(book)
+            seen.add(isbn)
+            results.append(Book(source=src.value, **cand))
     return results[:limit]
-
-
-def _title_google_books(query: str, limit: int) -> list[Book]:
-    params = {
-        "q": query,  # general query: forgiving if the user types "title author"
-        "country": GOOGLE_BOOKS_COUNTRY,
-        "maxResults": min(limit, 20),
-    }
-    if GOOGLE_BOOKS_API_KEY:
-        params["key"] = GOOGLE_BOOKS_API_KEY
-    throttle.wait(_GOOGLE_HOST)
-    resp = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=TIMEOUT)
-    out = []
-    for item in resp.json().get("items", []) or []:
-        info = item.get("volumeInfo", {})
-        out.append(
-            Book(
-                isbn=_isbn_from_google(info.get("industryIdentifiers", [])),
-                title=info.get("title", ""),
-                author=", ".join(info.get("authors", [])),
-                cover_url=info.get("imageLinks", {}).get("thumbnail", ""),
-                publisher=info.get("publisher", ""),
-                year=info.get("publishedDate", ""),
-                language=info.get("language", ""),
-                source=ApiSource.google.value,
-            )
-        )
-    return out
-
-
-def _isbn_from_google(identifiers: list) -> str:
-    ids = {i.get("type"): i.get("identifier", "") for i in identifiers}
-    if ids.get("ISBN_13"):
-        return ids["ISBN_13"]
-    if ids.get("ISBN_10"):
-        return isbn10_to_isbn13(ids["ISBN_10"])
-    return ""
-
-
-def _title_open_library(query: str, limit: int) -> list[Book]:
-    params = {
-        "q": query,  # general query (matches title/author), forgiving like Google
-        "limit": limit,
-        "fields": "title,author_name,first_publish_year,isbn,publisher,cover_i",
-    }
-    throttle.wait(_OPENLIB_HOST)
-    resp = requests.get(OPEN_LIBRARY_SEARCH_URL, params=params, timeout=TIMEOUT)
-    out = []
-    for doc in resp.json().get("docs", []) or []:
-        isbns = doc.get("isbn", []) or []
-        isbn13 = next((x for x in isbns if len(x) == 13 and x.startswith("978")), "")
-        cover = (
-            f"https://covers.openlibrary.org/b/id/{doc['cover_i']}-M.jpg"
-            if doc.get("cover_i")
-            else ""
-        )
-        out.append(
-            Book(
-                isbn=isbn13,
-                title=doc.get("title", ""),
-                author=", ".join((doc.get("author_name") or [])[:3]),
-                cover_url=cover,
-                publisher=(doc.get("publisher") or [""])[0],
-                year=str(doc.get("first_publish_year") or ""),
-                source=ApiSource.open_lib.value,
-            )
-        )
-    return out
 
 
 if __name__ == "__main__":
