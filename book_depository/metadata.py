@@ -203,7 +203,9 @@ def _from_douban(isbn: str) -> Book | None:
         cover_url=_cover_url(isbn),  # Douban blocks hotlinking; use GB or OL instead
         publisher=data["publisher"],
         year=data["year"],
-        language="zh-Hans",  # mainland Douban = Simplified Chinese
+        # No language: Douban lists English/foreign books too and the scraper can't
+        # tell, so inferring "zh-Hans" from the source mislabels them. Leave it for
+        # Google Books' accurate per-book code (or empty) to fill via the merge.
         source=ApiSource.douban.value,
     )
 
