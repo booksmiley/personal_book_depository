@@ -23,6 +23,14 @@ _HOST = "www.googleapis.com"
 TIMEOUT = 10
 
 
+def _thumb(info: dict) -> str:
+    """Cover thumbnail, upgraded to https. Google returns http:// links, which get
+    dropped by the frontend's https-only guard (and are mixed content on Render);
+    the image serves fine over https."""
+    url = info.get("imageLinks", {}).get("thumbnail", "")
+    return "https://" + url[len("http://"):] if url.startswith("http://") else url
+
+
 def _volume(isbn: str) -> dict | None:
     """Return the first matching volumeInfo dict for an ISBN, or None."""
     params = {"q": f"isbn:{isbn}", "country": COUNTRY}
@@ -49,7 +57,7 @@ def fetch_google_books_metadata(isbn: str) -> dict | None:
     return {
         "title": info.get("title", ""),
         "author": ", ".join(info.get("authors", [])),  # Google: plain name strings
-        "cover_url": info.get("imageLinks", {}).get("thumbnail", ""),
+        "cover_url": _thumb(info),
         "publisher": info.get("publisher", ""),
         "year": info.get("publishedDate", ""),
         "language": info.get("language", ""),  # ISO code, e.g. "en", "zh"
@@ -65,7 +73,7 @@ def thumbnail(isbn: str) -> str:
         return ""
     if not info:
         return ""
-    return info.get("imageLinks", {}).get("thumbnail", "")
+    return _thumb(info)
 
 
 def search_google_books(query: str, limit: int) -> list[dict]:
@@ -86,7 +94,7 @@ def search_google_books(query: str, limit: int) -> list[dict]:
                 "isbn": _isbn_from_identifiers(info.get("industryIdentifiers", [])),
                 "title": info.get("title", ""),
                 "author": ", ".join(info.get("authors", [])),
-                "cover_url": info.get("imageLinks", {}).get("thumbnail", ""),
+                "cover_url": _thumb(info),
                 "publisher": info.get("publisher", ""),
                 "year": info.get("publishedDate", ""),
                 "language": info.get("language", ""),

@@ -186,14 +186,23 @@ function esc(s) {
   );
 }
 
+// Safe cover <img src>: https as-is; upgrade http→https (covers serve fine over https,
+// which recovers Google's http thumbnails and avoids mixed content); block everything
+// else (javascript:/data:). Returns "" when there's no usable URL.
+function coverSrc(url) {
+  url = url || "";
+  if (/^https:\/\//.test(url)) return url;
+  if (/^http:\/\//.test(url)) return "https://" + url.slice(7);
+  return "";
+}
+
 // Shared book blurb (cover + title/author + availability when known).
 function bookInfoHtml(book, showCounts) {
   const counts =
     showCounts && book.available != null
       ? `<br /><small>${book.available} of ${book.total_count} available</small>`
       : "";
-  // Only allow https:// cover URLs — blocks javascript: and data: schemes.
-  const safeCover = /^https:\/\//.test(book.cover_url || "") ? book.cover_url : "";
+  const safeCover = coverSrc(book.cover_url);
   return `
     ${safeCover ? `<img src="${esc(safeCover)}" alt="cover" />` : ""}
     <div>
@@ -418,8 +427,9 @@ function renderCollection(books) {
 function renderGrid(books) {
   const cards = books
     .map((book) => {
-      const cover = book.cover_url
-        ? `<img src="${esc(book.cover_url)}" alt="cover" loading="lazy" />`
+      const src = coverSrc(book.cover_url);
+      const cover = src
+        ? `<img src="${esc(src)}" alt="cover" loading="lazy" />`
         : `<div class="no-cover">${esc(book.title || "")}</div>`;
       const avail = book.available ?? 0;
       const total = book.total_count ?? 1;
@@ -699,8 +709,9 @@ function renderSearchResults(q, results) {
   setStatus(T("st_results", { n: results.length }));
   resultEl.innerHTML = `<div class="search-results">${results
     .map((b, i) => {
-      const cover = /^https:\/\//.test(b.cover_url || "")
-        ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy" />`
+      const cSrc = coverSrc(b.cover_url);
+      const cover = cSrc
+        ? `<img src="${esc(cSrc)}" alt="" loading="lazy" />`
         : `<div class="no-cover"></div>`;
       const meta = [b.author, b.publisher, b.year].filter(Boolean).map(esc).join(" · ");
       return `<button class="search-result" data-i="${i}">
