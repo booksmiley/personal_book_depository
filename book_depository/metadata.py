@@ -14,10 +14,10 @@ from enum import Enum
 import requests
 
 from book_depository import throttle
-from book_depository.douban import fetch_douban_metadata
-from book_depository.ects import fetch_ects_metadata
+from book_depository.sources.douban import fetch_douban_metadata
+from book_depository.sources.ects import fetch_ects_metadata
 from book_depository.isbn import isbn10_to_isbn13, isbn13_to_isbn10
-from book_depository.isbnnet import fetch_isbnnet_metadata
+from book_depository.sources.isbnnet import fetch_isbnnet_metadata
 
 log = logging.getLogger(__name__)
 GOOGLE_BOOKS_API_KEY = os.environ.get("GOOGLE_BOOKS_API_KEY", "")

@@ -40,8 +40,8 @@ def _load_key() -> None:
 
 _load_key()  # must run before the metadata import below
 
-from book_depository.douban import fetch_douban_metadata  # noqa: E402
-from book_depository.isbnnet import fetch_isbnnet_metadata, is_taiwan_isbn  # noqa: E402
+from book_depository.sources.douban import fetch_douban_metadata  # noqa: E402
+from book_depository.sources.isbnnet import fetch_isbnnet_metadata, is_taiwan_isbn  # noqa: E402
 from book_depository.metadata import _from_google_books, _from_open_library  # noqa: E402
 
 # (label, sample ISBN the source should have, callable) — sample used when no ISBN arg.
