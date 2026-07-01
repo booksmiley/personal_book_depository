@@ -35,7 +35,7 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   → Cloudflare R2, restores on boot (WAL mode, `--workers 1 --threads 8` — one process
   keeps Litestream's single writer; threads serve concurrent requests). Verified live.
 - **Reconstruction log (`ledger.py`)**: one JSON `LEDGER` line per mutation → Render logs
-  (independent of R2). Local runs also write date-split `ledger-YYYY-MM-DD.log` to the data dir.
+  (independent of R2). Local runs also write date-split `YYYY-MM-DD.log` to the data dir.
 - **Backups**: `backup_db()` snapshots the SQLite file to `backup_dir` (iCloud) after each
   write; local only (Render relies on Litestream).
 - **Local run**: `run_local.py` + `local_config/config.yml`; HTTPS via openssl self-signed

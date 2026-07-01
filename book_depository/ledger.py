@@ -43,8 +43,8 @@ def log_event(action: str, **fields) -> None:
 
 
 class _DailyFileHandler(logging.Handler):
-    """Write each event to ledger-YYYY-MM-DD.log, switching files when the date rolls
-    over. Ledger volume is tiny, so we just flush every line."""
+    """Write each event to YYYY-MM-DD.log, switching files when the date rolls over.
+    Volume is tiny, so we just flush every line."""
 
     def __init__(self, directory: Path):
         super().__init__()
@@ -57,7 +57,7 @@ class _DailyFileHandler(logging.Handler):
         if today != self._day:
             if self._stream:
                 self._stream.close()
-            self._stream = open(self._dir / f"ledger-{today}.log", "a", encoding="utf-8")
+            self._stream = open(self._dir / f"{today}.log", "a", encoding="utf-8")
             self._day = today
         return self._stream
 
@@ -71,7 +71,7 @@ class _DailyFileHandler(logging.Handler):
 
 
 def enable_file_logging(directory) -> None:
-    """Persist ledger events to date-split files (ledger-YYYY-MM-DD.log) in `directory`.
+    """Persist ledger events to date-split files (YYYY-MM-DD.log) in `directory`.
     For LOCAL runs only — on Render the same lines already land in the platform logs.
     Console output is unaffected (this is an extra handler)."""
     path = Path(directory).expanduser()
