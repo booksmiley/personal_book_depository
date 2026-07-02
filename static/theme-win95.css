@@ -316,7 +316,10 @@ button:disabled { opacity: 0.45; cursor: default; }
 .book-list th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
 
 /* Title-search candidate list */
-#title-search { display: flex; gap: 4px; margin: 4px 0 0; }
+#title-search { display: flex; align-items: center; gap: 4px; margin: 4px 0 0; }
+/* Keep these inputs at natural height (don't stretch them to the button's margin-box). */
+#manual-entry { align-items: center; }
+#manual-entry > button, #title-search > button { margin: 0; }
 #title-search input { flex: 1; font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
 .search-results { display: flex; flex-direction: column; gap: 4px; }
 .search-result { display: flex; gap: 6px; align-items: center; text-align: left; width: 100%; padding: 4px; margin: 0; background: var(--silver); border: 2px solid; border-color: var(--hi) var(--sh) var(--sh) var(--hi); cursor: pointer; }

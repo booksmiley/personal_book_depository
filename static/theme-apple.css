@@ -287,7 +287,10 @@ button:disabled { opacity: 0.32; cursor: default; }
 .book-list th.sortable:hover { color: var(--blue); }
 
 /* Title-search candidate list */
-#title-search { display: flex; gap: 0.4rem; margin: 0.4rem 0 0; }
+#title-search { display: flex; align-items: center; gap: 0.4rem; margin: 0.4rem 0 0; }
+/* Keep these inputs at natural height (don't stretch them to the button's margin-box). */
+#manual-entry { align-items: center; }
+#manual-entry > button, #title-search > button { margin: 0; }
 #title-search input { flex: 1; font-size: 0.9rem; padding: 0.5rem 0.75rem; border: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow); outline: none; color: var(--g1); }
 #title-search input:focus { box-shadow: 0 0 0 3px rgba(0,113,227,0.25); }
 .search-results { display: flex; flex-direction: column; gap: 0.5rem; }

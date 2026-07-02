@@ -285,7 +285,10 @@ button:disabled { opacity: 0.3; cursor: default; }
 .book-list th.sortable:hover { color: var(--accent); }
 
 /* Title-search candidate list */
-#title-search { display: flex; gap: 4px; margin: 0.4rem 0 0; }
+#title-search { display: flex; align-items: center; gap: 4px; margin: 0.4rem 0 0; }
+/* Keep these inputs at natural height (don't stretch them to the button's margin-box). */
+#manual-entry { align-items: center; }
+#manual-entry > button, #title-search > button { margin: 0; }
 #title-search input { flex: 1; font-family: inherit; font-size: 0.82rem; padding: 5px 8px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
 #title-search input:focus { border-color: var(--accent); }
 .search-results { display: flex; flex-direction: column; gap: 0.4rem; }
