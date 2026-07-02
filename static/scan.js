@@ -238,7 +238,7 @@ function renderBorrowCard(book) {
   const actions = resultEl.querySelector("#actions");
   const none = book.available <= 0;
   actions.innerHTML = `
-    <input id="borrower" placeholder="${esc(T("ph_name"))}" autocomplete="off" />
+    <input id="borrower" aria-label="${esc(T("ph_name"))}" placeholder="${esc(T("ph_name"))}" autocomplete="off" />
     <button id="borrow" ${none ? "disabled" : ""}>${esc(T("act_borrow"))}</button>
     <button id="next">${esc(T("act_scan_next"))}</button>`;
   if (none) setStatus(T("st_no_copies", { title: book.title }));
@@ -655,7 +655,7 @@ function fillCollectionActionUI(book, openLoans, container) {
 
   container.querySelector(".col-borrow-btn")?.addEventListener("click", () => {
     formEl.innerHTML = `
-      <input class="col-name-input" placeholder="${esc(T("ph_name"))}" autocomplete="off" />
+      <input class="col-name-input" aria-label="${esc(T("ph_name"))}" placeholder="${esc(T("ph_name"))}" autocomplete="off" />
       <button class="col-confirm-btn">${esc(T("act_confirm"))}</button>`;
     const nameInput = formEl.querySelector(".col-name-input");
     nameInput.focus();

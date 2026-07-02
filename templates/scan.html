@@ -30,25 +30,25 @@
         <video id="video" playsinline muted></video>
         <p id="status">{{ strings.st_idle }}</p>
         <div id="manual-entry">
-          <input id="manual-isbn" type="text" inputmode="numeric"
+          <input id="manual-isbn" type="text" inputmode="numeric" aria-label="{{ strings.ph_manual }}"
                  placeholder="{{ strings.ph_manual }}" maxlength="17" autocomplete="off" />
           <button id="manual-go">{{ strings.btn_go }}</button>
         </div>
         <div id="title-search" hidden>
-          <input id="title-input" type="text"
+          <input id="title-input" type="text" aria-label="{{ strings.ph_title }}"
                  placeholder="{{ strings.ph_title }}" maxlength="120" autocomplete="off" />
           <button id="title-go">{{ strings.btn_search }}</button>
         </div>
         <div id="manual-book" hidden>
           <button id="manual-book-toggle" class="view-btn">{{ strings.btn_add_manual }}</button>
           <div id="manual-book-form" hidden>
-            <input id="mb-title" type="text" placeholder="{{ strings.mb_title }}" maxlength="200" autocomplete="off" />
-            <input id="mb-author" type="text" placeholder="{{ strings.mb_author }}" maxlength="200" autocomplete="off" />
-            <input id="mb-publisher" type="text" placeholder="{{ strings.mb_publisher }}" maxlength="200" autocomplete="off" />
+            <input id="mb-title" type="text" aria-label="{{ strings.mb_title }}" placeholder="{{ strings.mb_title }}" maxlength="200" autocomplete="off" />
+            <input id="mb-author" type="text" aria-label="{{ strings.mb_author }}" placeholder="{{ strings.mb_author }}" maxlength="200" autocomplete="off" />
+            <input id="mb-publisher" type="text" aria-label="{{ strings.mb_publisher }}" placeholder="{{ strings.mb_publisher }}" maxlength="200" autocomplete="off" />
             <div class="mb-row">
-              <input id="mb-year" type="text" placeholder="{{ strings.mb_year }}" maxlength="20" autocomplete="off" />
-              <input id="mb-isbn" type="text" placeholder="{{ strings.mb_isbn }}" maxlength="20" autocomplete="off" />
-              <input id="mb-copies" type="number" min="1" value="1" title="{{ strings.mb_copies }}" />
+              <input id="mb-year" type="text" aria-label="{{ strings.mb_year }}" placeholder="{{ strings.mb_year }}" maxlength="20" autocomplete="off" />
+              <input id="mb-isbn" type="text" aria-label="{{ strings.mb_isbn }}" placeholder="{{ strings.mb_isbn }}" maxlength="20" autocomplete="off" />
+              <input id="mb-copies" type="number" min="1" value="1" aria-label="{{ strings.mb_copies }}" title="{{ strings.mb_copies }}" />
             </div>
             <div class="mb-row">
               <button id="mb-save">{{ strings.mb_save }}</button>
