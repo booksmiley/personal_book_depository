@@ -22,13 +22,15 @@ _HEADERS = {
 }
 _TIMEOUT = 20
 _MIN_INTERVAL = float(os.environ.get("ECTS_MIN_INTERVAL", "3.0"))
+# This source is plaintext HTTP to a bare IP, so allow disabling it (default on).
+_ENABLED = os.environ.get("ECTS_ENABLED", "1").lower() in ("1", "true", "yes", "on")
 
 
 def fetch_ects_metadata(isbn: str) -> dict | None:
     """Return {title, author, publisher, year}, or None."""
     import requests
 
-    if not is_chinese_or_us_isbn(isbn):
+    if not _ENABLED or not is_chinese_or_us_isbn(isbn):
         return None
 
     throttle.wait(_HOST, min_interval=_MIN_INTERVAL)

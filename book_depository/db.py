@@ -9,10 +9,15 @@ needs to sit on a PERSISTENT disk/volume or it gets wiped on redeploy.
 """
 
 import os
+import re
 import sqlite3
 from pathlib import Path
 
 from db_lib import run_migrations
+
+# Owner becomes a filename, so allowlist it (constant "lib_admin" today, but this is
+# the path-traversal guard for the planned per-user phase).
+_SAFE_OWNER = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 # Where the per-owner SQLite files live. Defaults to ./data inside the repo (git
 # -ignored), but BOOK_DATA_DIR overrides it so local runs can keep personal library
@@ -40,6 +45,8 @@ QUERY_AVAILABLE_COPIES = """
 
 
 def get_db(owner: str) -> sqlite3.Connection:
+    if not _SAFE_OWNER.match(owner or ""):
+        raise ValueError(f"unsafe owner name: {owner!r}")
     DATA_DIR.mkdir(exist_ok=True)
     conn = sqlite3.connect(DATA_DIR / f"{owner}.sqlite")
     conn.row_factory = sqlite3.Row  # rows behave like dicts

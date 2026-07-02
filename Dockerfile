@@ -24,4 +24,8 @@ RUN mkdir -p /data
 COPY litestream.yml /etc/litestream.yml
 RUN chmod +x /app/run.sh
 
+# Run as a non-root user that owns the data dir + app (Litestream/gunicorn write there).
+RUN useradd -m -u 10001 appuser && chown -R appuser /data /app
+USER appuser
+
 CMD ["/app/run.sh"]
