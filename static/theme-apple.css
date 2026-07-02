@@ -202,7 +202,12 @@ button:disabled { opacity: 0.32; cursor: default; }
 .book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.75rem; align-items: start; }
 @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
+/* Top bar (title + admin toggle) */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.topbar h1 { margin: 0; }
+
 /* Manual entry (admin) */
+#manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 0.5rem; }
 #manual-book-form { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.4rem; }
 #manual-book-form input { font-size: 0.9rem; padding: 0.5rem 0.7rem; border: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow); outline: none; color: var(--g1); }

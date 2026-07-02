@@ -11,7 +11,10 @@
     <script id="i18n" type="application/json">{{ strings | tojson }}</script>
 
     <div class="scan-wrap">
-      <h1>📚 {{ title }}</h1>
+      <div class="topbar">
+        <h1>📚 {{ title }}</h1>
+        {% if admin_enabled %}<button id="admin-btn" class="view-btn">{{ strings.btn_admin }}</button>{% endif %}
+      </div>
 
       <div id="mode" class="segment-control">
         <label class="segment"><input type="radio" name="mode" value="register" checked />{{ strings.mode_register }}</label>
@@ -49,7 +52,7 @@
             </div>
             <div class="mb-row">
               <button id="mb-save">{{ strings.mb_save }}</button>
-              <button id="mb-cancel">{{ strings.act_cancel }}</button>
+              <button id="mb-hide">{{ strings.mb_hide }}</button>
             </div>
           </div>
         </div>
@@ -68,7 +71,6 @@
         <button id="columns-btn" class="view-btn" hidden>{{ strings.btn_columns }}</button>
         <button id="export-csv" class="view-btn">{{ strings.btn_export_csv }}</button>
         <button id="export-json" class="view-btn">{{ strings.btn_export_json }}</button>
-        {% if admin_enabled %}<button id="admin-btn" class="view-btn">{{ strings.btn_admin }}</button>{% endif %}
         <button id="reload-btn">{{ strings.btn_reload }}</button>
       </div>
       <div id="column-panel" class="column-panel" hidden></div>

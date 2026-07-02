@@ -230,7 +230,12 @@ button:disabled { opacity: 0.45; cursor: default; }
 .book-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 4px; align-items: start; }
 @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
+/* Top bar (title + admin toggle) */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.topbar h1 { margin: 0; }
+
 /* Manual entry (admin) */
+#manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 4px; }
 #manual-book-form { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
 #manual-book-form input { font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }

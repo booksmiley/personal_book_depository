@@ -33,7 +33,7 @@ _EN = {
     "ph_name": "Your name",
     "ph_title": "Search by title",
     # Manual entry (admin)
-    "btn_add_manual": "＋ Add manually",
+    "btn_add_manual": "＋ Manual entry",
     "mb_title": "Title (required)",
     "mb_author": "Author",
     "mb_publisher": "Publisher",
@@ -41,6 +41,7 @@ _EN = {
     "mb_isbn": "ISBN (optional)",
     "mb_copies": "Copies",
     "mb_save": "Add to library",
+    "mb_hide": "Hide",
     "st_manual_added": 'Added ✅ "{title}".',
     # Status line
     "st_idle": "Idle.",
@@ -119,7 +120,7 @@ _ZH_HANT = {
     "ph_name": "您的姓名",
     "ph_title": "以書名搜尋",
     # Manual entry (admin)
-    "btn_add_manual": "＋ 手動新增",
+    "btn_add_manual": "＋ 手動輸入",
     "mb_title": "書名（必填）",
     "mb_author": "作者",
     "mb_publisher": "出版社",
@@ -127,6 +128,7 @@ _ZH_HANT = {
     "mb_isbn": "ISBN（選填）",
     "mb_copies": "複本數",
     "mb_save": "加入館藏",
+    "mb_hide": "隱藏",
     "st_manual_added": "已加入 ✅「{title}」。",
     # Status line
     "st_idle": "待機中。",

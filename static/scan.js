@@ -685,7 +685,7 @@ function syncModeUi() {
   collectionEl.hidden = mode !== "collection";
   titleSearch.hidden = mode !== "register"; // title search only makes sense for adding
   manualBook.hidden = !(mode === "register" && isAdmin()); // admin-only manual entry
-  if (manualBook.hidden) manualBookForm.hidden = true;
+  collapseManualForm(); // always start collapsed (toggle shown, fields hidden)
 }
 document.querySelectorAll('input[name="mode"]').forEach((radio) => {
   radio.addEventListener("change", () => {
@@ -751,13 +751,18 @@ titleGo.addEventListener("click", submitTitleSearch);
 titleInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitTitleSearch(); });
 
 // --- Manual entry (admin): add a book with no ISBN or one not found online ---
-manualBookToggle.addEventListener("click", () => {
-  manualBookForm.hidden = !manualBookForm.hidden;
-  if (!manualBookForm.hidden) mb.title.focus();
-});
-document.getElementById("mb-cancel").addEventListener("click", () => {
+// Disclosure: you see either the "＋ Manual entry" toggle OR the open form, not both.
+function showManualForm() {
+  manualBookForm.hidden = false;
+  manualBookToggle.hidden = true;
+  mb.title.focus();
+}
+function collapseManualForm() {
   manualBookForm.hidden = true;
-});
+  manualBookToggle.hidden = false;
+}
+manualBookToggle.addEventListener("click", showManualForm);
+document.getElementById("mb-hide").addEventListener("click", collapseManualForm);
 document.getElementById("mb-save").addEventListener("click", submitManualBook);
 
 async function submitManualBook() {
@@ -778,7 +783,7 @@ async function submitManualBook() {
     const data = await postJson("/api/register-manual", body, adminHeaders());
     Object.values(mb).forEach((el) => (el.value = ""));
     mb.copies.value = "1";
-    manualBookForm.hidden = true;
+    collapseManualForm();
     const t = (data.book && data.book.title) || title;
     setStatus(T(data.status === "exists" ? "st_exists" : "st_manual_added", { title: t }));
     if (cachedBooks) loadCollection(); // keep the collection fresh for when you switch
