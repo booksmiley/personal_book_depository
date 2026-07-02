@@ -105,6 +105,18 @@ def _note_auth_failure(ip: str) -> None:
     _recent_fails(ip).append(time.time())
 
 
+def _clean_field(value, limit: int = 500) -> str:
+    """Coerce client-supplied metadata to a stripped, length-capped string."""
+    return str(value or "").strip()[:limit]
+
+
+def _csv_safe(value) -> str:
+    """Neutralise spreadsheet formula injection: a cell beginning with = + - @ or a
+    control char is executed by Excel, so prefix it with a single quote."""
+    s = "" if value is None else str(value)
+    return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
+
+
 def is_admin() -> bool:
     """True if admin is open (trusted local) or the request carries the right header."""
     if ADMIN_OPEN:
@@ -221,9 +233,12 @@ def register(raw_isbn: str):
         if not existing:
             posted = request.get_json(silent=True)
             if posted:
+                # This path takes client-supplied metadata (the frontend posts back
+                # what it looked up) and isn't admin-gated, so coerce/strip/cap every
+                # field rather than storing it verbatim.
                 meta = Book(
                     **{
-                        k: posted.get(k, "")
+                        k: _clean_field(posted.get(k, ""))
                         for k in (
                             "isbn",
                             "title",
@@ -487,7 +502,7 @@ def export_csv():
     writer.writerow(_EXPORT_COLUMNS)
     for b in books:
         keys = b.keys()
-        writer.writerow([b[c] if c in keys else "" for c in _EXPORT_COLUMNS])
+        writer.writerow([_csv_safe(b[c]) if c in keys else "" for c in _EXPORT_COLUMNS])
     return Response(
         buf.getvalue().encode("utf-8-sig"),
         mimetype="text/csv",  # Flask appends "; charset=utf-8"
