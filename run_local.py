@@ -87,7 +87,12 @@ def main() -> None:
     print(f"On your phone (same WiFi): {scheme}://<this-mac-LAN-IP>:{port}")
 
     # threaded=True so a slow metadata lookup doesn't block borrow/return.
-    app.run(host=host, port=port, ssl_context=ssl_context, debug=True, threaded=True)
+    # No debug=True: on a shared network the Werkzeug debugger is a remote code-exec
+    # console. Keep auto-reload, drop the interactive debugger.
+    app.run(
+        host=host, port=port, ssl_context=ssl_context,
+        use_reloader=True, use_debugger=False, threaded=True,
+    )
 
 
 if __name__ == "__main__":

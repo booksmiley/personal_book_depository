@@ -10,6 +10,7 @@ import logging
 import os
 import secrets
 import sqlite3
+import time
 
 from flask import Flask, Response, abort, jsonify, render_template, request
 
@@ -77,6 +78,32 @@ ADMIN_OPEN = os.environ.get("BOOK_ADMIN_OPEN", "").lower() in ("1", "true", "yes
 LOAN_DAYS = int(os.environ.get("BOOK_LOAN_DAYS", "30"))
 DUE_SOON_DAYS = int(os.environ.get("BOOK_DUE_SOON_DAYS", "3"))
 
+# In-memory brute-force throttle (fine with single-worker gunicorn): too many failed
+# password attempts from one IP inside the window → 429 until they age out.
+_AUTH_FAILS: dict[str, list[float]] = {}
+_AUTH_FAIL_WINDOW = 300  # seconds
+_AUTH_FAIL_MAX = 20
+
+
+def _client_ip() -> str:
+    fwd = request.headers.get("X-Forwarded-For", "")
+    return (fwd.split(",")[0].strip() if fwd else request.remote_addr) or "?"
+
+
+def _recent_fails(ip: str) -> list[float]:
+    now = time.time()
+    fails = [t for t in _AUTH_FAILS.get(ip, []) if now - t < _AUTH_FAIL_WINDOW]
+    _AUTH_FAILS[ip] = fails
+    return fails
+
+
+def _auth_locked(ip: str) -> bool:
+    return len(_recent_fails(ip)) >= _AUTH_FAIL_MAX
+
+
+def _note_auth_failure(ip: str) -> None:
+    _recent_fails(ip).append(time.time())
+
 
 def is_admin() -> bool:
     """True if admin is open (trusted local) or the request carries the right header."""
@@ -85,22 +112,30 @@ def is_admin() -> bool:
     if not ADMIN_PASSWORD:
         return False
     supplied = request.headers.get("X-Admin-Password", "")
-    return hmac.compare_digest(supplied, ADMIN_PASSWORD)  # constant-time compare
+    if hmac.compare_digest(supplied, ADMIN_PASSWORD):  # constant-time compare
+        return True
+    if supplied:  # a wrong password was tried — count it toward the lockout
+        _note_auth_failure(_client_ip())
+    return False
 
 
 @app.before_request
 def check_auth():
     if not BOOK_PASSWORD:
         return
+    ip = _client_ip()
+    if _auth_locked(ip):
+        return Response("Too many failed attempts — try again shortly.", 429)
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Basic "):
         try:
             decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
             _, _, password = decoded.partition(":")
-            if password == BOOK_PASSWORD:
+            if hmac.compare_digest(password, BOOK_PASSWORD):  # constant-time
                 return
         except Exception:
             pass
+    _note_auth_failure(ip)
     return Response(
         "Library access is password-protected.",
         401,
@@ -596,4 +631,6 @@ if __name__ == "__main__":
     # localhost counts as a secure context, so the camera works here on your laptop.
     # Phone testing over a LAN IP is BLOCKED without HTTPS — deploy, or use a tunnel
     # (e.g. `cloudflared tunnel`), once you want to test on a real phone.
-    app.run(host="0.0.0.0", port=8000, debug=True, threaded=True)
+    # No debug=True: the Werkzeug debugger is an RCE console to anyone on the network.
+    # Keep auto-reload for local dev, but never the interactive debugger.
+    app.run(host="0.0.0.0", port=8000, use_reloader=True, use_debugger=False, threaded=True)
