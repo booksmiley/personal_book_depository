@@ -93,3 +93,13 @@ def test_loans_lists_open_with_overdue_status(data_dir, monkeypatch):
 def test_loans_requires_admin(data_dir, monkeypatch):
     client = _client(data_dir, monkeypatch, admin=False)
     assert client.get("/api/loans").status_code == 403
+
+
+def test_noisbn_books_are_borrowable_and_deletable(data_dir, monkeypatch):
+    client = _client(data_dir, monkeypatch)
+    key = client.post("/api/register-manual", json={"title": "No ISBN"}).get_json()["book"]["isbn"]
+    assert key.startswith("NOISBN-")
+    assert client.get(f"/api/book/{key}").status_code == 200
+    assert client.post(f"/api/borrow/{key}", json={"borrower": "A"}).status_code == 200
+    assert client.patch(f"/api/book/{key}", json={"author": "B"}).status_code == 200
+    assert client.delete(f"/api/book/{key}").status_code == 200

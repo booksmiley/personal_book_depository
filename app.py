@@ -8,6 +8,7 @@ import io
 import json
 import logging
 import os
+import re
 import secrets
 import sqlite3
 import time
@@ -115,6 +116,16 @@ def _csv_safe(value) -> str:
     control char is executed by Excel, so prefix it with a single quote."""
     s = "" if value is None else str(value)
     return "'" + s if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
+
+
+def _book_key(raw: str):
+    """Normalise a URL key for an EXISTING book: a real ISBN → ISBN-13; a manual-entry
+    local key (NOISBN-…) passes through so those books can be borrowed/edited/deleted.
+    Returns None for anything else."""
+    raw = (raw or "").strip()
+    if re.fullmatch(r"NOISBN-[0-9A-Fa-f]{1,32}", raw):
+        return raw.upper()
+    return to_isbn13(raw)
 
 
 def is_admin() -> bool:
@@ -363,7 +374,7 @@ def book_lookup(raw_isbn: str):
     DB lookup for borrow/return — NO network call (metadata was cached at register).
     Returns the book AND its open loans (the return screen lists those to pick from).
     """
-    isbn = to_isbn13(raw_isbn)
+    isbn = _book_key(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
@@ -383,7 +394,7 @@ def borrow(raw_isbn: str):
     """
     Borrow a copy under a minimal borrower label. JSON body: {"borrower": ...}.
     """
-    isbn = to_isbn13(raw_isbn)
+    isbn = _book_key(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
@@ -411,7 +422,7 @@ def return_book_route(raw_isbn: str):
     """
     Close a specific open loan the user picked. JSON body: {"loan_id": ...}.
     """
-    isbn = to_isbn13(raw_isbn)
+    isbn = _book_key(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
@@ -436,7 +447,7 @@ def edit_book(raw_isbn: str):
     """Admin: edit a book's metadata / copy count. JSON body = fields to change."""
     if not is_admin():
         abort(403, "Admin access required.")
-    isbn = to_isbn13(raw_isbn)
+    isbn = _book_key(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     payload = request.get_json(silent=True) or {}
@@ -458,7 +469,7 @@ def remove_book(raw_isbn: str):
     """Admin: delete a book and its loan history."""
     if not is_admin():
         abort(403, "Admin access required.")
-    isbn = to_isbn13(raw_isbn)
+    isbn = _book_key(raw_isbn)
     if isbn is None:
         abort(400, description=_t("srv_invalid_isbn", raw=raw_isbn))
     conn = get_db(DEFAULT_OWNER)
