@@ -207,6 +207,10 @@ button:disabled { opacity: 0.32; cursor: default; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 1.25rem; }
 .topbar h1 { margin: 0; }
 
+/* Collection filter */
+#collection-search { width: 100%; font-size: 0.9rem; padding: 0.5rem 0.75rem; margin: 0 0 0.6rem; border: none; border-radius: 10px; background: var(--card); box-shadow: var(--shadow); color: var(--g1); outline: none; -webkit-appearance: none; }
+#collection-search:focus { box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.25); }
+
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 0.5rem; }

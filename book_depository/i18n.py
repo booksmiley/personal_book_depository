@@ -32,6 +32,7 @@ _EN = {
     "ph_manual": "Enter ISBN manually",
     "ph_name": "Your name",
     "ph_title": "Search by title",
+    "ph_filter": "Filter by title / author…",
     # Manual entry (admin)
     "btn_add_manual": "＋ Manual entry",
     "mb_title": "Title (required)",
@@ -119,6 +120,7 @@ _ZH_HANT = {
     "ph_manual": "手動輸入 ISBN",
     "ph_name": "您的姓名",
     "ph_title": "以書名搜尋",
+    "ph_filter": "篩選書名／作者……",
     # Manual entry (admin)
     "btn_add_manual": "＋ 手動輸入",
     "mb_title": "書名（必填）",

@@ -196,6 +196,10 @@ button:disabled { opacity: 0.3; cursor: default; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 1.1rem; }
 .topbar h1 { margin: 0; }
 
+/* Collection filter */
+#collection-search { width: 100%; font-family: inherit; font-size: 0.82rem; padding: 5px 8px; margin: 0 0 0.5rem; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
+#collection-search:focus { border-color: var(--accent); }
+
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 0.5rem; }

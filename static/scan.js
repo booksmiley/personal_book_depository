@@ -420,11 +420,25 @@ async function loadCollection() {
   try {
     const { books } = await getJson("/api/books");
     cachedBooks = books;
-    renderCollection(books);
+    applyCollectionFilter();
   } catch (err) {
     collectionBodyEl.innerHTML = `<p style="color:#c00">${esc(err.message)}</p>`;
   }
 }
+
+// Client-side filter over the already-loaded books (title / author / ISBN substring).
+const collectionSearch = document.getElementById("collection-search");
+function applyCollectionFilter() {
+  if (!cachedBooks) return;
+  const q = (collectionSearch.value || "").trim().toLowerCase();
+  const books = q
+    ? cachedBooks.filter((b) =>
+        [b.title, b.author, b.isbn].some((v) => (v || "").toLowerCase().includes(q)),
+      )
+    : cachedBooks;
+  renderCollection(books);
+}
+collectionSearch.addEventListener("input", applyCollectionFilter);
 
 function renderCollection(books) {
   collectionCountEl.textContent =

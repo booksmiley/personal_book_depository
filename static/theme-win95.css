@@ -234,6 +234,9 @@ button:disabled { opacity: 0.45; cursor: default; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; }
 .topbar h1 { margin: 0; }
 
+/* Collection filter */
+#collection-search { width: 100%; font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; margin: 0 0 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
+
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 4px; }
