@@ -192,6 +192,19 @@ def get_all_books(conn: sqlite3.Connection):
     return cur.fetchall()
 
 
+def all_open_loans(conn: sqlite3.Connection):
+    """Every currently-open loan across all books (with the book's title/isbn), oldest
+    first. Powers the admin 'who has what / overdue' view."""
+    return conn.execute(
+        """
+        SELECT l.loan_id, l.borrower, l.borrowed_at, b.isbn, b.title
+        FROM loans l JOIN books b ON b.book_id = l.book_id
+        WHERE l.returned_at IS NULL
+        ORDER BY l.borrowed_at
+        """
+    ).fetchall()
+
+
 def backup_db(conn: sqlite3.Connection, backup_path: str):
     if not backup_path:
         return

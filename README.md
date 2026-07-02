@@ -16,10 +16,12 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
   tag. Per-provider modules live in `book_depository/sources/`.
 - **Register / borrow / return** — copies tracked per book; each loan names a
   borrower; return closes the exact loan you pick.
-- **Collection** — grid or list view; tap a book to borrow/return inline, choose
-  which columns the list shows, and export the whole catalog as CSV or JSON.
-- **Admin mode** — set an admin password to edit or delete records, and to **add
-  books manually** (no ISBN needed — for books not found online).
+- **Collection** — grid or list view; **filter** by title/author, tap a book to
+  borrow/return inline, choose which columns the list shows, and **export / import**
+  the catalog as CSV or JSON.
+- **Admin mode** — set an admin password to edit/delete records, **add books manually**
+  (no ISBN needed), and open a **loans page** — who has what, with due-soon (yellow) and
+  overdue (red) highlighting.
 - **Themes & language** — `apple` / `win95` / `terminal`; UI language `en` or
   `zh-Hant` (繁體) for the borrow/return menu and messages, via `BOOK_LANG`.
 - **Durable on Render** — Litestream replicates SQLite to object storage; a JSON
@@ -180,6 +182,7 @@ replay to rebuild the DB if the bucket is ever lost. Free-tier cold starts take
 | `BOOK_LANG` | Frontend language for the borrow/return menu: `en` (default) or `zh-Hant` |
 | `GOOGLE_BOOKS_API_KEY` · `GOOGLE_BOOKS_COUNTRY` | Google Books key · country (default `US`) |
 | `SCRAPER_MIN_INTERVAL` | Seconds between scraper hits per host (default `1`) |
+| `BOOK_LOAN_DAYS` · `BOOK_DUE_SOON_DAYS` | Loan length · due-soon window for the loans view (default `30` · `3`) |
 | `BOOK_DATA_DIR` · `BOOK_BACKUP_DIR` | SQLite dir (`/data` in Docker) · backup dir |
 | `R2_BUCKET` · `R2_ENDPOINT` | Litestream bucket · S3 endpoint |
 | `LITESTREAM_ACCESS_KEY_ID` · `LITESTREAM_SECRET_ACCESS_KEY` | R2/B2 credentials |

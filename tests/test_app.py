@@ -69,3 +69,27 @@ def test_import_csv_requires_admin(data_dir, monkeypatch):
         content_type="multipart/form-data",
     )
     assert resp.status_code == 403
+
+
+def test_loans_lists_open_with_overdue_status(data_dir, monkeypatch):
+    from book_depository import db
+
+    client = _client(data_dir, monkeypatch)
+    client.post("/api/register-manual", json={"title": "Borrowed Book", "isbn": "9780131103627"})
+    client.post("/api/borrow/9780131103627", json={"borrower": "Alice"})
+    conn = db.get_db("lib_admin")  # backdate the loan so it's overdue
+    conn.execute("UPDATE loans SET borrowed_at = datetime('now','-40 days')")
+    conn.commit()
+    conn.close()
+
+    data = client.get("/api/loans").get_json()
+    assert len(data["loans"]) == 1
+    loan = data["loans"][0]
+    assert loan["borrower"] == "Alice"
+    assert loan["title"] == "Borrowed Book"
+    assert loan["status"] == "overdue"
+
+
+def test_loans_requires_admin(data_dir, monkeypatch):
+    client = _client(data_dir, monkeypatch, admin=False)
+    assert client.get("/api/loans").status_code == 403

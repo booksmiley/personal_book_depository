@@ -34,6 +34,8 @@ const cameraUi = document.getElementById("camera-ui");
 const collectionEl = document.getElementById("collection");
 const collectionCountEl = document.getElementById("collection-count");
 const collectionBodyEl = document.getElementById("collection-body");
+const loansEl = document.getElementById("loans");
+const loansBodyEl = document.getElementById("loans-body");
 
 const detector = new BarcodeDetector({ formats: ["ean_13"] });
 
@@ -304,6 +306,7 @@ const columnPanel = document.getElementById("column-panel");
 const adminBtn = document.getElementById("admin-btn");
 const importBtn = document.getElementById("import-btn");
 const importFile = document.getElementById("import-file");
+const loansBtn = document.getElementById("loans-btn");
 
 // Columns we never offer (internal id / non-textual).
 const HIDDEN_COLUMNS = new Set(["book_id", "cover_url"]);
@@ -385,6 +388,7 @@ function refreshAdminBtn() {
     adminBtn.classList.toggle("active", isAdmin());
   }
   if (importBtn) importBtn.hidden = !isAdmin(); // CSV import is admin-only
+  if (loansBtn) loansBtn.hidden = !isAdmin(); // loans view is admin-only
   syncModeUi(); // admin state gates the manual-entry form in register mode
 }
 refreshAdminBtn();
@@ -427,6 +431,58 @@ async function loadCollection() {
   } catch (err) {
     collectionBodyEl.innerHTML = `<p style="color:#c00">${esc(err.message)}</p>`;
   }
+}
+
+// --- Loans view (admin): who has what, with due-date highlighting ---
+function showLoans() {
+  if (scanning) stopCamera();
+  cameraUi.hidden = true;
+  collectionEl.hidden = true;
+  loansEl.hidden = false;
+  loadLoans();
+}
+if (loansBtn) loansBtn.addEventListener("click", showLoans);
+
+async function loadLoans() {
+  loansBodyEl.innerHTML = `<p>${T("st_loading")}</p>`;
+  try {
+    const resp = await fetch("/api/loans", { headers: { ...adminHeaders() } });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || T("st_request_failed", { status: resp.status }));
+    renderLoans(data.loans || []);
+  } catch (err) {
+    loansBodyEl.innerHTML = `<p style="color:#c00">${esc(err.message)}</p>`;
+  }
+}
+
+function renderLoans(loans) {
+  if (!loans.length) {
+    loansBodyEl.innerHTML = `<p>${T("st_no_loans")}</p>`;
+    return;
+  }
+  const rows = loans
+    .map((l) => {
+      const cls =
+        l.status === "overdue" ? "loan-overdue" : l.status === "due_soon" ? "loan-soon" : "";
+      const status =
+        l.status === "overdue"
+          ? T("loan_overdue_by", { n: -l.days_left })
+          : l.status === "due_soon"
+            ? T("loan_due_in", { n: l.days_left })
+            : T("loan_ok");
+      return `<tr class="${cls}">
+          <td>${esc(l.title)}</td><td>${esc(l.borrower)}</td>
+          <td>${esc(l.borrowed_at)}</td><td>${esc(l.due_at)}</td><td>${esc(status)}</td>
+        </tr>`;
+    })
+    .join("");
+  loansBodyEl.innerHTML = `<table class="loans-table">
+      <thead><tr>
+        <th>${T("loan_book")}</th><th>${T("loan_borrower")}</th>
+        <th>${T("loan_borrowed")}</th><th>${T("loan_due")}</th><th>${T("loan_status")}</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // Client-side filter over the already-loaded books (title / author / ISBN substring).
@@ -699,6 +755,7 @@ function fillCollectionActionUI(book, openLoans, container) {
 // --- Mode switching ---
 function syncModeUi() {
   const mode = currentMode();
+  loansEl.hidden = true; // any mode selection leaves the admin loans view
   cameraUi.hidden = mode === "collection";
   collectionEl.hidden = mode !== "collection";
   titleSearch.hidden = mode !== "register"; // title search only makes sense for adding

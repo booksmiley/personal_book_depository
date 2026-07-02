@@ -234,6 +234,14 @@ button:disabled { opacity: 0.45; cursor: default; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; }
 .topbar h1 { margin: 0; }
 
+/* Loans view (admin) */
+.topbar-actions { display: flex; gap: 4px; align-items: center; }
+.loans-table { width: 100%; border-collapse: collapse; font-size: 0.76rem; background: #fff; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); }
+.loans-table th, .loans-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--silver); }
+.loans-table th { background: var(--silver); }
+.loan-soon { background: #ffffcc; }
+.loan-overdue { background: #ffcccc; }
+
 /* Collection filter */
 #collection-search { width: 100%; font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; margin: 0 0 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
 

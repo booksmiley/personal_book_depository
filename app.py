@@ -2,6 +2,7 @@
 
 import base64
 import csv
+import datetime
 import hmac
 import io
 import json
@@ -17,6 +18,7 @@ from book_depository.db import (
     EDITABLE_FIELDS,
     add_book,
     add_copy,
+    all_open_loans,
     backup_db,
     borrow_book,
     close_loan,
@@ -69,6 +71,11 @@ ADMIN_PASSWORD = os.environ.get("BOOK_ADMIN_PASSWORD", "")
 # "Trusted local" mode: grant admin to everyone with no password. run_local.py turns
 # this ON by default (you own the machine). NEVER set it on a public deploy.
 ADMIN_OPEN = os.environ.get("BOOK_ADMIN_OPEN", "").lower() in ("1", "true", "yes", "on")
+
+# Loan period for the "who has what" view: due = borrowed_at + LOAN_DAYS; flag as
+# "due soon" within DUE_SOON_DAYS of the due date.
+LOAN_DAYS = int(os.environ.get("BOOK_LOAN_DAYS", "30"))
+DUE_SOON_DAYS = int(os.environ.get("BOOK_DUE_SOON_DAYS", "3"))
 
 
 def is_admin() -> bool:
@@ -532,6 +539,57 @@ def import_csv():
     finally:
         conn.close()
     return jsonify(status="imported", added=added, updated=updated, skipped=skipped)
+
+
+def _parse_ts(value: str):
+    """Parse a stored SQLite timestamp ('YYYY-MM-DD HH:MM:SS', UTC) to an aware dt."""
+    if not value:
+        return None
+    try:
+        dt = datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=datetime.timezone.utc) if dt.tzinfo is None else dt
+
+
+@app.get("/api/loans")
+def loans():
+    """Admin: every book currently on loan, with a computed due date and status
+    (ok / due_soon / overdue) so the frontend can highlight them."""
+    if not is_admin():
+        abort(403, "Admin access required.")
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        rows = all_open_loans(conn)
+    finally:
+        conn.close()
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    soon = datetime.timedelta(days=DUE_SOON_DAYS)
+    out = []
+    for r in rows:
+        borrowed = _parse_ts(r["borrowed_at"])
+        due = borrowed + datetime.timedelta(days=LOAN_DAYS) if borrowed else None
+        status, days_left = "ok", None
+        if due:
+            days_left = (due - now).days
+            if now > due:
+                status = "overdue"
+            elif due - now <= soon:
+                status = "due_soon"
+        out.append(
+            {
+                "loan_id": r["loan_id"],
+                "isbn": r["isbn"],
+                "title": r["title"],
+                "borrower": r["borrower"],
+                "borrowed_at": (r["borrowed_at"] or "")[:10],
+                "due_at": due.strftime("%Y-%m-%d") if due else "",
+                "days_left": days_left,
+                "status": status,
+            }
+        )
+    return jsonify(loans=out, loan_days=LOAN_DAYS)
 
 
 if __name__ == "__main__":

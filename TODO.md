@@ -34,13 +34,15 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
   known ISBN, or all sources against one ISBN. ISBNnet is gated to Taiwan ISBNs
   (957/986/626/627) so it's a silent no-op for others — that's why it can look absent in a
   backfill of mostly non-Taiwan books.
-- **Collection**: grid or list; tap to borrow/return inline; pick & reorder columns
-  (from DB keys, friendly order, persisted); click a header to sort asc/desc; export the
-  catalog (`/api/export.csv` with UTF-8 BOM for Excel, `/api/export.json`).
+- **Collection**: grid or list; **filter** by title/author/ISBN (client-side); tap to
+  borrow/return inline; pick & reorder columns (from DB keys, persisted); click a header
+  to sort (default newest-added first); **export/import** CSV (`/api/export.csv` with
+  UTF-8 BOM for Excel, `/api/export.json`; `POST /api/import.csv` upserts by ISBN).
 - **Admin** (`BOOK_ADMIN_PASSWORD`; `BOOK_ADMIN_OPEN` = trusted local, on by default in
   `run_local.py`): inline edit/delete; **manual add** (register mode — title required,
-  ISBN optional → `NOISBN-…` local key, copies, `source=MANUAL`); constant-time auth;
-  whitelisted fields; logged.
+  ISBN optional → `NOISBN-…` local key, copies, `source=MANUAL`); **loans view** (who has
+  what; due = borrowed + `BOOK_LOAN_DAYS`, `due_soon`/`overdue` highlighting); constant-time
+  auth; whitelisted fields; logged.
 - **Schema migrations** (`db_lib/NNNN_*.sql`): applied per-connection, tracked by
   `PRAGMA user_version`, each in one transaction. Add a column = drop a file, deploy.
   `0003` adds `added_at` (book insert time) — existing rows backfilled with the
@@ -81,6 +83,7 @@ camera as scanner. Flask + stdlib sqlite3 (DB-per-owner); zero-build JS frontend
     remote access to a home server via Tailscale (private) or Cloudflare Tunnel (public).
   - Key tension: a *shared* library needs a shared source of truth, so "fully local data"
     only fully works in a single-station / single-device design.
-- **Later**: borrower `contact` field (follow the `language` migration pattern); overdue /
-  "who has what" view; log drain for indefinite `LEDGER` retention; watch metadata gaps
-  (HK books, mainland titles absent from Douban — add a source if real misses show up).
+- **Later**: borrower `contact` field (follow the `language` migration pattern); stored
+  per-loan due dates (currently computed from `borrowed_at + BOOK_LOAN_DAYS`); log drain
+  for indefinite `LEDGER` retention; watch metadata gaps (HK books, mainland titles absent
+  from Douban — add a source if real misses show up).

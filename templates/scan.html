@@ -13,7 +13,12 @@
     <div class="scan-wrap">
       <div class="topbar">
         <h1>📚 {{ title }}</h1>
-        {% if admin_enabled %}<button id="admin-btn" class="view-btn">{{ strings.btn_admin }}</button>{% endif %}
+        {% if admin_enabled %}
+        <div class="topbar-actions">
+          <button id="loans-btn" class="view-btn" hidden>{{ strings.btn_loans }}</button>
+          <button id="admin-btn" class="view-btn">{{ strings.btn_admin }}</button>
+        </div>
+        {% endif %}
       </div>
 
       <div id="mode" class="segment-control">
@@ -79,6 +84,10 @@
              autocomplete="off" aria-label="{{ strings.ph_filter }}" />
       <div id="column-panel" class="column-panel" hidden></div>
       <div id="collection-body"></div>
+    </section>
+
+    <section id="loans" hidden>
+      <div id="loans-body"></div>
     </section>
 
     <script type="module" src="{{ url_for('static', filename='scan.js') }}"></script>
