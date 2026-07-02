@@ -119,8 +119,8 @@ button:disabled { opacity: 0.32; cursor: default; }
 }
 #manual-isbn {
   flex: 1;
-  font-size: 0.95rem;
-  padding: 0.45rem 0.75rem;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
   border: none;
   border-radius: 980px;
   background: var(--g6);
@@ -209,7 +209,7 @@ button:disabled { opacity: 0.32; cursor: default; }
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 0.5rem; }
-#manual-book-form { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.4rem; }
+#manual-book-form { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid var(--g5); }
 #manual-book-form input { font-size: 0.9rem; padding: 0.5rem 0.7rem; border: none; background: var(--card); border-radius: 10px; box-shadow: var(--shadow); outline: none; color: var(--g1); }
 #manual-book-form input:focus { box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.25); }
 #manual-book-form .mb-row { display: flex; gap: 0.4rem; }

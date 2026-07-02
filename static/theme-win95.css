@@ -140,7 +140,7 @@ button:disabled { opacity: 0.45; cursor: default; }
   flex: 1;
   font-family: "Courier New", monospace;
   font-size: 0.78rem;
-  padding: 3px 5px;
+  padding: 2px 4px;
   border: 2px solid;
   border-color: var(--sh) var(--hi) var(--hi) var(--sh);
   background: #fff;
@@ -237,7 +237,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */
 #manual-book { margin-top: 4px; }
-#manual-book-form { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+#manual-book-form { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--sh); }
 #manual-book-form input { font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
 #manual-book-form .mb-row { display: flex; gap: 4px; }
 #manual-book-form .mb-row input { flex: 1; min-width: 0; }
