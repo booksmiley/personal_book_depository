@@ -7,7 +7,19 @@ def _client(data_dir, monkeypatch, admin=True):
     monkeypatch.setattr(flask_app, "ADMIN_OPEN", admin)  # trusted-local admin
     monkeypatch.setattr(flask_app, "ADMIN_PASSWORD", "")
     monkeypatch.setattr(flask_app, "BOOK_PASSWORD", "")  # no site auth in tests
-    return flask_app.app.test_client()
+    client = flask_app.app.test_client()
+    # The server's CSRF guard requires X-Requested-With on mutating requests, just as
+    # the frontend sends it — inject it on every test request.
+    original_open = client.open
+
+    def open_with_csrf(*args, **kwargs):
+        headers = kwargs.setdefault("headers", {})
+        if isinstance(headers, dict):
+            headers.setdefault("X-Requested-With", "XMLHttpRequest")
+        return original_open(*args, **kwargs)
+
+    client.open = open_with_csrf
+    return client
 
 
 def test_register_manual_without_isbn_gets_local_key(data_dir, monkeypatch):
@@ -93,6 +105,13 @@ def test_loans_lists_open_with_overdue_status(data_dir, monkeypatch):
 def test_loans_requires_admin(data_dir, monkeypatch):
     client = _client(data_dir, monkeypatch, admin=False)
     assert client.get("/api/loans").status_code == 403
+
+
+def test_mutating_request_without_csrf_header_is_blocked(data_dir, monkeypatch):
+    monkeypatch.setattr(flask_app, "ADMIN_OPEN", True)
+    monkeypatch.setattr(flask_app, "BOOK_PASSWORD", "")
+    raw = flask_app.app.test_client()  # note: no X-Requested-With injected
+    assert raw.post("/api/register-manual", json={"title": "x"}).status_code == 403
 
 
 def test_noisbn_books_are_borrowable_and_deletable(data_dir, monkeypatch):

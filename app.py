@@ -166,6 +166,34 @@ def check_auth():
     )
 
 
+# CSRF defence: state-changing requests must carry this custom header. A cross-origin
+# page can't add it on a plain form/navigation, and setting it from a cross-origin fetch
+# triggers a preflight this server never approves — so only our own page can mutate.
+_MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+@app.before_request
+def csrf_guard():
+    if request.method in _MUTATING and not request.headers.get("X-Requested-With"):
+        abort(403, "Missing X-Requested-With header.")
+
+
+@app.after_request
+def security_headers(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    # A conservative CSP that doesn't touch script/img sources (so the CDN barcode
+    # polyfill + its WASM keep working): block plugins, framing, and <base> hijacking.
+    resp.headers.setdefault(
+        "Content-Security-Policy",
+        "frame-ancestors 'none'; object-src 'none'; base-uri 'self'",
+    )
+    if request.is_secure:
+        resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return resp
+
+
 @app.errorhandler(400)
 @app.errorhandler(401)
 @app.errorhandler(403)

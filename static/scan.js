@@ -408,7 +408,7 @@ if (adminBtn && !adminOpen) {
     try {
       const resp = await fetch("/api/admin/check", {
         method: "POST",
-        headers: { "X-Admin-Password": pw },
+        headers: { "X-Requested-With": "XMLHttpRequest", "X-Admin-Password": pw },
       });
       if (!resp.ok) throw new Error("rejected");
       adminPassword = pw;
@@ -872,6 +872,7 @@ async function postJson(url, body, extraHeaders) {
   const resp = await fetch(url, {
     method: "POST",
     headers: {
+      "X-Requested-With": "XMLHttpRequest", // CSRF guard (server requires it)
       ...(body ? { "Content-Type": "application/json" } : {}),
       ...(extraHeaders || {}),
     },
@@ -886,7 +887,11 @@ async function postJson(url, body, extraHeaders) {
 async function patchJson(url, body) {
   const resp = await fetch(url, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...adminHeaders() },
+    headers: {
+      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/json",
+      ...adminHeaders(),
+    },
     body: JSON.stringify(body),
   });
   const data = await resp.json().catch(() => ({}));
@@ -895,7 +900,10 @@ async function patchJson(url, body) {
 }
 
 async function deleteReq(url) {
-  const resp = await fetch(url, { method: "DELETE", headers: { ...adminHeaders() } });
+  const resp = await fetch(url, {
+    method: "DELETE",
+    headers: { "X-Requested-With": "XMLHttpRequest", ...adminHeaders() },
+  });
   const data = await resp.json().catch(() => ({}));
   if (!resp.ok) throw new Error(data.error || T("st_request_failed", { status: resp.status }));
   return data;
@@ -1029,7 +1037,7 @@ importFile.addEventListener("change", async () => {
   try {
     const resp = await fetch("/api/import.csv", {
       method: "POST",
-      headers: { ...adminHeaders() },
+      headers: { "X-Requested-With": "XMLHttpRequest", ...adminHeaders() },
       body,
     });
     const data = await resp.json().catch(() => ({}));
