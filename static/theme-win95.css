@@ -231,7 +231,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* Top bar (title + admin toggle) */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.6rem; }
 .topbar h1 { margin: 0; }
 
 /* Manual entry (admin) */

@@ -122,8 +122,9 @@ button:disabled { opacity: 0.32; cursor: default; }
   font-size: 0.9rem;
   padding: 0.5rem 0.75rem;
   border: none;
-  border-radius: 980px;
-  background: var(--g6);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow);
   color: var(--g1);
   outline: none;
   -webkit-appearance: none;
@@ -203,7 +204,7 @@ button:disabled { opacity: 0.32; cursor: default; }
 @media (max-width: 600px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* Top bar (title + admin toggle) */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 1.25rem; }
 .topbar h1 { margin: 0; }
 
 /* Manual entry (admin) */
