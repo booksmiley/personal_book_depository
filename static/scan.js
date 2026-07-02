@@ -302,6 +302,8 @@ viewListBtn.classList.toggle("active", collectionView === "list");
 const columnsBtn = document.getElementById("columns-btn");
 const columnPanel = document.getElementById("column-panel");
 const adminBtn = document.getElementById("admin-btn");
+const importBtn = document.getElementById("import-btn");
+const importFile = document.getElementById("import-file");
 
 // Columns we never offer (internal id / non-textual).
 const HIDDEN_COLUMNS = new Set(["book_id", "cover_url"]);
@@ -382,6 +384,7 @@ function refreshAdminBtn() {
     adminBtn.textContent = isAdmin() ? "🔓 Admin ✓" : "🔒 Admin";
     adminBtn.classList.toggle("active", isAdmin());
   }
+  if (importBtn) importBtn.hidden = !isAdmin(); // CSV import is admin-only
   syncModeUi(); // admin state gates the manual-entry form in register mode
 }
 refreshAdminBtn();
@@ -952,4 +955,32 @@ document.getElementById("export-csv").addEventListener("click", () => {
 });
 document.getElementById("export-json").addEventListener("click", () => {
   window.location.href = "/api/export.json";
+});
+
+// CSV import (admin): a hidden file input drives the upload.
+importBtn.addEventListener("click", () => importFile.click());
+importFile.addEventListener("change", async () => {
+  const file = importFile.files[0];
+  if (!file) return;
+  if (!window.confirm(T("cf_import"))) {
+    importFile.value = "";
+    return;
+  }
+  const body = new FormData();
+  body.append("file", file);
+  try {
+    const resp = await fetch("/api/import.csv", {
+      method: "POST",
+      headers: { ...adminHeaders() },
+      body,
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || T("st_request_failed", { status: resp.status }));
+    window.alert(T("st_imported", data));
+    loadCollection();
+  } catch (err) {
+    window.alert(err.message);
+  } finally {
+    importFile.value = "";
+  }
 });

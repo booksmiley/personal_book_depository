@@ -468,6 +468,72 @@ def export_json():
     )
 
 
+# CSV columns we import (mirrors the export). available/added_at/source are derived or
+# system-owned, so they're ignored on import.
+_IMPORT_FIELDS = ("title", "author", "publisher", "year", "language", "cover_url")
+
+
+@app.post("/api/import.csv")
+def import_csv():
+    """Admin: upsert books from a CSV (same columns as the export). Existing ISBNs are
+    updated (non-empty cells only); new ones are added. Rows without a title are skipped."""
+    if not is_admin():
+        abort(403, "Admin access required.")
+    upload = request.files.get("file")
+    if upload is None:
+        abort(400, description=_t("srv_no_file"))
+    try:
+        text = upload.read().decode("utf-8-sig")  # tolerate the BOM our export writes
+    except UnicodeDecodeError:
+        abort(400, description=_t("srv_bad_csv"))
+
+    added = updated = skipped = 0
+    conn = get_db(DEFAULT_OWNER)
+    try:
+        for row in csv.DictReader(io.StringIO(text)):
+            title = (row.get("title") or "").strip()
+            if not title:
+                skipped += 1
+                continue
+            raw_isbn = (row.get("isbn") or "").strip()
+            isbn = to_isbn13(raw_isbn) if raw_isbn else _synthetic_isbn()
+            if isbn is None:  # an ISBN was given but it's invalid
+                skipped += 1
+                continue
+            fields = {"title": title}
+            fields.update(
+                {f: (row.get(f) or "").strip() for f in _IMPORT_FIELDS if f != "title"}
+            )
+            try:
+                copies = max(1, int(row.get("total_count") or 1))
+            except (TypeError, ValueError):
+                copies = 1
+
+            if find_book_by_isbn(conn, isbn):
+                # only overwrite with non-empty cells, so blanks don't wipe good data
+                updates = {k: v for k, v in fields.items() if v}
+                updates["total_count"] = copies
+                update_book(conn, isbn, updates)
+                updated += 1
+            else:
+                book = Book(isbn=isbn, source="IMPORT", **fields)
+                try:
+                    add_book(conn, book)
+                except sqlite3.IntegrityError:
+                    conn.rollback()
+                    skipped += 1
+                    continue
+                for _ in range(copies - 1):
+                    add_copy(conn, isbn)
+                added += 1
+
+        log_event("csv_import", added=added, updated=updated, skipped=skipped)
+        backup_db(conn, BACKUP_DIR)
+    finally:
+        conn.close()
+    return jsonify(status="imported", added=added, updated=updated, skipped=skipped)
+
+
 if __name__ == "__main__":
     # localhost counts as a secure context, so the camera works here on your laptop.
     # Phone testing over a LAN IP is BLOCKED without HTTPS — deploy, or use a tunnel

@@ -36,3 +36,36 @@ def test_register_manual_requires_title(data_dir, monkeypatch):
 def test_register_manual_requires_admin(data_dir, monkeypatch):
     client = _client(data_dir, monkeypatch, admin=False)
     assert client.post("/api/register-manual", json={"title": "x"}).status_code == 403
+
+
+def test_import_csv_adds_updates_and_skips(data_dir, monkeypatch):
+    import io
+
+    client = _client(data_dir, monkeypatch)
+    client.post("/api/register-manual", json={"title": "Old", "isbn": "9780131103627"})
+    csv = (
+        "isbn,title,author,total_count\n"
+        "9780131103627,New Title,K&R,3\n"   # update existing
+        ",Journal,Anon,1\n"                 # add (no ISBN -> local key)
+        ",,skip me,\n"                      # skipped (no title)
+    )
+    resp = client.post(
+        "/api/import.csv",
+        data={"file": (io.BytesIO(csv.encode()), "lib.csv")},
+        content_type="multipart/form-data",
+    )
+    assert resp.get_json() == {
+        "status": "imported", "added": 1, "updated": 1, "skipped": 1,
+    }
+
+
+def test_import_csv_requires_admin(data_dir, monkeypatch):
+    import io
+
+    client = _client(data_dir, monkeypatch, admin=False)
+    resp = client.post(
+        "/api/import.csv",
+        data={"file": (io.BytesIO(b"isbn,title\n"), "x.csv")},
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 403
