@@ -450,8 +450,9 @@ function renderCollection(books) {
     collectionBodyEl.innerHTML = `<p>${T("st_no_books")}</p>`;
     return;
   }
-  if (collectionView === "list") renderList(books);
-  else renderGrid(books);
+  const ordered = sortBooks(books); // apply the sort to grid too (list re-sorts, harmless)
+  if (collectionView === "list") renderList(ordered);
+  else renderGrid(ordered);
 }
 
 function renderGrid(books) {
@@ -483,8 +484,8 @@ function renderGrid(books) {
 }
 
 // Click a column header to sort ascending; click again for descending.
-let sortColumn = null;
-let sortDir = 1; // 1 = ascending, -1 = descending
+let sortColumn = "added_at"; // default: most recently added first
+let sortDir = -1; // 1 = ascending, -1 = descending
 
 function sortBooks(books) {
   if (!sortColumn) return books;
