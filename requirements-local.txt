@@ -1,6 +1,7 @@
-# Extra deps needed only for local phone testing (run_local.py).
-# Not installed on Render — keeps the production image lean.
+# Extra deps needed only for local phone testing (run_local.py) and the
+# publish-to-R2 script. Not installed on Render — keeps the production image lean.
 pyyaml>=6.0.1
+boto3>=1.34  # scripts/publish_catalog.py uploads catalog.json to R2 (S3 protocol)
 # NOTE: no `cryptography` here on purpose — it tries to compile from Rust source on
 # this machine and fails. For HTTPS we use an openssl-generated cert instead (set
 # certfile/keyfile in config.yml). stdlib `ssl` loads those with no extra packages.

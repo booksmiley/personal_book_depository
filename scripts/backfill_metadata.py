@@ -25,6 +25,8 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
+from book_depository.config import apply_env, load_config  # noqa: E402
+
 
 def _load_config_env() -> None:
     """Pull the Google Books key (and data dir) from local_config/config.yml into the
@@ -32,21 +34,8 @@ def _load_config_env() -> None:
     means Google Books' generous authenticated rate limit instead of the low anonymous
     one, which is what causes 429s during a bulk backfill. (Needs pyyaml — installed
     via requirements-local.txt.)"""
-    cfg_path = _ROOT / "local_config" / "config.yml"
-    if not cfg_path.exists():
-        return
-    try:
-        import yaml
-
-        cfg = yaml.safe_load(cfg_path.read_text()) or {}
-    except Exception:
-        return
-    key = cfg.get("GOOGLE_BOOKS_API_KEY") or cfg.get("google_books_api_key")
-    if key and not os.environ.get("GOOGLE_BOOKS_API_KEY"):
-        os.environ["GOOGLE_BOOKS_API_KEY"] = key
-    data_dir = cfg.get("data_dir")
-    if data_dir and not os.environ.get("BOOK_DATA_DIR"):
-        os.environ["BOOK_DATA_DIR"] = os.path.expanduser(data_dir)
+    cfg = load_config()
+    apply_env(cfg)
 
 
 _load_config_env()  # must run before the imports below (they read env at import time)

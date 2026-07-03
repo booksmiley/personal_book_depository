@@ -1,0 +1,5 @@
+# Deps for the read-only viewer service only (render.yaml installs just this file,
+# so the viewer never carries the scraper/metadata stack).
+flask>=3.0
+gunicorn>=21.2
+boto3>=1.34

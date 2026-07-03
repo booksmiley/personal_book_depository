@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="{{ lang }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme-' + theme + '.css') }}" />
+  </head>
+  <body>
+    <!-- UI strings for the frontend (viewer.js reads this). -->
+    <script id="i18n" type="application/json">{{ strings | tojson }}</script>
+
+    <div class="scan-wrap">
+      <div class="topbar">
+        <h1>📚 {{ title }}</h1>
+      </div>
+    </div>
+
+    <!-- Same ids/classes as scan.html's collection section, so the theme CSS
+         applies unchanged. Read-only: no borrow/return, no admin, no import. -->
+    <section id="collection">
+      <div id="collection-header">
+        <span id="collection-count"></span>
+        <div class="view-toggle">
+          <button id="view-grid-btn" class="view-btn active">{{ strings.btn_grid }}</button>
+          <button id="view-list-btn" class="view-btn">{{ strings.btn_list }}</button>
+        </div>
+        <button id="columns-btn" class="view-btn" hidden>{{ strings.btn_columns }}</button>
+        <button id="reload-btn">{{ strings.btn_reload }}</button>
+        <small id="last-synced"></small>
+      </div>
+      <input id="collection-search" type="search" placeholder="{{ strings.ph_filter }}"
+             autocomplete="off" aria-label="{{ strings.ph_filter }}" />
+      <div id="column-panel" class="column-panel" hidden></div>
+      <div id="collection-body"></div>
+    </section>
+
+    <script type="module" src="{{ url_for('static', filename='viewer.js') }}"></script>
+  </body>
+</html>

@@ -33,3 +33,9 @@ services:
         sync: false
       - key: BOOK_THEME            # apple | win95 | terminal (optional)
         sync: false
+
+# NOTE: the read-only public viewer (viewer/app.py) is deliberately NOT defined
+# here. A Blueprint manages every service in this file, so listing it would make
+# this (full app) Blueprint create a viewer on its next sync. Deploy the
+# viewer as a standalone manual Web Service instead — settings are in
+# docs/viewer_design.md ("Render deployment").
