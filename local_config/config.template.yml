@@ -56,3 +56,13 @@ lang: en
 # Trusted-local admin: edit/delete records with no password (you own this machine).
 # Set to false to require the admin password locally too. Always off on Render.
 admin_open: true
+
+# Cloudflare R2 target for scripts/publish_catalog.py — the public viewer's data
+# source (see docs/viewer_design.md). Use an API token with Object Read & Write on
+# the bucket. Leave blank if you don't run the public viewer.
+r2:
+  bucket: ""                       # e.g. church-library
+  endpoint: ""                     # https://<account-id>.r2.cloudflarestorage.com
+  access_key_id: ""
+  secret_access_key: ""
+  key: "public/catalog.json"       # object path inside the bucket

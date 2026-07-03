@@ -90,6 +90,7 @@ _EN = {
     "st_loading": "Loading…",
     "st_no_books": "No books registered yet.",
     "st_book_count": "{n} books",
+    "st_synced": "Updated {t}",  # public viewer: catalog snapshot timestamp
     # Action buttons on cards / inline panels
     "act_add": "Add to library",
     "act_scan_next": "Scan next book",
@@ -194,6 +195,7 @@ _ZH_HANT = {
     "st_loading": "載入中……",
     "st_no_books": "尚未登記任何書籍。",
     "st_book_count": "共 {n} 本",
+    "st_synced": "更新於 {t}",  # public viewer: catalog snapshot timestamp
     # Action buttons
     "act_add": "加入館藏",
     "act_scan_next": "掃描下一本",

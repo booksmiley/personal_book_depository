@@ -12,16 +12,9 @@ Requires the local-only deps:  pip install -r requirements-local.txt
 import os
 from pathlib import Path
 
-import yaml
+from book_depository.config import load_config
 
 CONFIG_PATH = Path(__file__).resolve().parent / "local_config" / "config.yml"
-
-
-def load_config() -> dict:
-    if not CONFIG_PATH.exists():
-        raise SystemExit(f"Missing config: {CONFIG_PATH}")
-    with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f) or {}
 
 
 def main() -> None:
