@@ -87,14 +87,22 @@ _AUTH_FAIL_MAX = 20
 
 
 def _client_ip() -> str:
+    # Use the RIGHTMOST X-Forwarded-For entry — the one the trusted proxy (Render adds
+    # one hop) appended. The leftmost entries are attacker-supplied: trusting them lets
+    # someone rotate the value per request to dodge the lockout.
     fwd = request.headers.get("X-Forwarded-For", "")
-    return (fwd.split(",")[0].strip() if fwd else request.remote_addr) or "?"
+    if fwd:
+        return fwd.split(",")[-1].strip() or "?"
+    return request.remote_addr or "?"
 
 
 def _recent_fails(ip: str) -> list[float]:
     now = time.time()
     fails = [t for t in _AUTH_FAILS.get(ip, []) if now - t < _AUTH_FAIL_WINDOW]
-    _AUTH_FAILS[ip] = fails
+    if fails:
+        _AUTH_FAILS[ip] = fails
+    else:
+        _AUTH_FAILS.pop(ip, None)  # don't retain empty buckets (unbounded growth)
     return fails
 
 
@@ -103,7 +111,9 @@ def _auth_locked(ip: str) -> bool:
 
 
 def _note_auth_failure(ip: str) -> None:
-    _recent_fails(ip).append(time.time())
+    fails = _recent_fails(ip)  # prunes; may have popped the key
+    fails.append(time.time())
+    _AUTH_FAILS[ip] = fails  # (re-)store, since _recent_fails may have popped it
 
 
 def _clean_field(value, limit: int = 500) -> str:
@@ -600,33 +610,35 @@ def import_csv():
             fields.update(
                 {f: (row.get(f) or "").strip() for f in _IMPORT_FIELDS if f != "title"}
             )
-            try:
-                copies = max(1, int(row.get("total_count") or 1))
-            except (TypeError, ValueError):
-                copies = 1
+            raw_copies = (row.get("total_count") or "").strip()  # may be absent entirely
 
             if find_book_by_isbn(conn, isbn):
-                # only overwrite with non-empty cells, so blanks don't wipe good data
-                updates = {k: v for k, v in fields.items() if v}
-                updates["total_count"] = copies
-                update_book(conn, isbn, updates)
+                updates = {k: v for k, v in fields.items() if v}  # blanks don't wipe data
+                if raw_copies:  # only touch the count when the column is actually present
+                    try:
+                        updates["total_count"] = max(1, int(raw_copies))
+                    except ValueError:
+                        pass
+                update_book(conn, isbn, updates, commit=False)
                 updated += 1
             else:
-                book = Book(isbn=isbn, source="IMPORT", **fields)
+                add_book(conn, Book(isbn=isbn, source="IMPORT", **fields), commit=False)
                 try:
-                    add_book(conn, book)
-                except sqlite3.IntegrityError:
-                    conn.rollback()
-                    skipped += 1
-                    continue
+                    copies = max(1, int(raw_copies)) if raw_copies else 1
+                except ValueError:
+                    copies = 1
                 for _ in range(copies - 1):
-                    add_copy(conn, isbn)
+                    add_copy(conn, isbn, commit=False)
                 added += 1
 
-        log_event("csv_import", added=added, updated=updated, skipped=skipped)
-        backup_db(conn, BACKUP_DIR)
-    finally:
+        conn.commit()  # all-or-nothing: a mid-file error rolls the whole import back
+    except Exception:
+        conn.rollback()
         conn.close()
+        raise
+    log_event("csv_import", added=added, updated=updated, skipped=skipped)
+    backup_db(conn, BACKUP_DIR)
+    conn.close()
     return jsonify(status="imported", added=added, updated=updated, skipped=skipped)
 
 

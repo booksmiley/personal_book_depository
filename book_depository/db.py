@@ -67,7 +67,7 @@ def find_book_by_isbn(conn: sqlite3.Connection, isbn: str):
     return row
 
 
-def add_book(conn: sqlite3.Connection, book) -> int:
+def add_book(conn: sqlite3.Connection, book, commit: bool = True) -> int:
     cur = conn.execute(
         BOOK_INSERT,
         (
@@ -81,13 +81,15 @@ def add_book(conn: sqlite3.Connection, book) -> int:
             book.language,
         ),
     )
-    conn.commit()
+    if commit:  # commit=False lets a caller batch many writes into one transaction
+        conn.commit()
     return cur.lastrowid
 
 
-def add_copy(conn: sqlite3.Connection, isbn: str) -> int:
+def add_copy(conn: sqlite3.Connection, isbn: str, commit: bool = True) -> int:
     cur = conn.execute(BOOK_UPDATE_COPY, (isbn,))
-    conn.commit()
+    if commit:
+        conn.commit()
     return cur.rowcount
 
 
@@ -97,7 +99,7 @@ def add_copy(conn: sqlite3.Connection, isbn: str) -> int:
 EDITABLE_FIELDS = ("title", "author", "publisher", "year", "language", "cover_url", "total_count")
 
 
-def update_book(conn: sqlite3.Connection, isbn: str, fields: dict):
+def update_book(conn: sqlite3.Connection, isbn: str, fields: dict, commit: bool = True):
     """Update whitelisted fields of a book. If total_count changes, recompute
     available = total_count - (open loans). Returns the fresh row, or None if the
     book doesn't exist."""
@@ -120,7 +122,8 @@ def update_book(conn: sqlite3.Connection, isbn: str, fields: dict):
 
     columns = ", ".join(f"{k} = ?" for k in updates)  # keys are the whitelist above
     conn.execute(f"UPDATE books SET {columns} WHERE isbn = ?", (*updates.values(), isbn))
-    conn.commit()
+    if commit:
+        conn.commit()
     return find_book_by_isbn(conn, isbn)
 
 

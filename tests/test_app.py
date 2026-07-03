@@ -71,6 +71,44 @@ def test_import_csv_adds_updates_and_skips(data_dir, monkeypatch):
     }
 
 
+def test_xff_spoof_does_not_bypass_lockout(data_dir, monkeypatch):
+    import base64
+
+    monkeypatch.setattr(flask_app, "BOOK_PASSWORD", "s3cret")
+    monkeypatch.setattr(flask_app, "_AUTH_FAILS", {})  # clean slate for this test
+    client = flask_app.app.test_client()
+
+    def headers(pw, spoof):
+        return {
+            "Authorization": "Basic " + base64.b64encode(f":{pw}".encode()).decode(),
+            # A real proxy appends the client IP, so the rightmost entry is trustworthy;
+            # the attacker rotates the leftmost value to try to dodge the bucket.
+            "X-Forwarded-For": f"{spoof}, 5.5.5.5",
+        }
+
+    for i in range(22):
+        client.get("/api/books", headers=headers("wrong", f"fake{i}"))
+    # The rightmost IP is locked out — even the correct password is now refused.
+    assert client.get("/api/books", headers=headers("s3cret", "brandnew")).status_code == 429
+
+
+def test_import_without_total_count_column_preserves_copies(data_dir, monkeypatch):
+    import io
+
+    from book_depository import db
+
+    client = _client(data_dir, monkeypatch)
+    client.post("/api/register-manual",
+                json={"title": "Multi", "isbn": "9780131103627", "total_count": 3})
+    csv = "isbn,title,author\n9780131103627,Multi,Updated Author\n"  # no total_count column
+    client.post("/api/import.csv",
+                data={"file": (io.BytesIO(csv.encode()), "lib.csv")},
+                content_type="multipart/form-data")
+    row = db.find_book_by_isbn(db.get_db("lib_admin"), "9780131103627")
+    assert row["total_count"] == 3          # not collapsed to 1
+    assert row["author"] == "Updated Author"  # other fields still updated
+
+
 def test_import_csv_requires_admin(data_dir, monkeypatch):
     import io
 
