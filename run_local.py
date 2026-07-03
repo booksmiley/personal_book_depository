@@ -18,6 +18,14 @@ CONFIG_PATH = Path(__file__).resolve().parent / "local_config" / "config.yml"
 
 
 def main() -> None:
+    # The shared load_config() returns {} for a missing file (fine for optional use
+    # in scripts), but a local run without config is a setup mistake — fail loudly.
+    if not CONFIG_PATH.exists():
+        raise SystemExit(
+            f"Missing config: {CONFIG_PATH}\n"
+            "Copy the template first:  "
+            "cp local_config/config.template.yml local_config/config.yml"
+        )
     cfg = load_config()
     server = cfg.get("server", {})
 
