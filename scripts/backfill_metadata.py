@@ -20,12 +20,12 @@ import os
 import sys
 from pathlib import Path
 
-from book_depository.config import load_config, apply_env
-
 # scripts/ live one level under the project root; add it to the path so the
 # book_depository package imports work when run as `python scripts/backfill_metadata.py`.
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
+
+from book_depository.config import apply_env, load_config  # noqa: E402
 
 
 def _load_config_env() -> None:
