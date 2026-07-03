@@ -61,7 +61,7 @@ admin_open: true
 # source (see docs/viewer_design.md). Use an API token with Object Read & Write on
 # the bucket. Leave blank if you don't run the public viewer.
 r2:
-  bucket: ""                       # e.g. church-library
+  bucket: ""                       # e.g. my-library-catalog
   endpoint: ""                     # https://<account-id>.r2.cloudflarestorage.com
   access_key_id: ""
   secret_access_key: ""

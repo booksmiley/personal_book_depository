@@ -27,6 +27,8 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
 - **Durable on Render** — Litestream replicates SQLite to object storage; a JSON
   event log is a second safety net (Render logs, plus dated files locally).
 - **Auth** — optional site-wide password, plus a separate admin password for edits.
+- **Read-only public viewer** — optional companion service that publishes just the
+  collection view, fed by a JSON snapshot in R2 (no borrower data leaves the laptop).
 
 ## Architecture
 
@@ -119,7 +121,7 @@ Render's free disk is wiped on redeploy and on idle spin-down, so
 
 1. Sign up at <https://dash.cloudflare.com/sign-up> (a card enables R2; the free
    tier — 10 GB, no egress fees — won't charge you at this scale).
-2. **R2** → **Create bucket**, name it e.g. `church-library`.
+2. **R2** → **Create bucket**, name it e.g. `my-library`.
 3. Note the **endpoint** shown for the bucket:
    `https://<account-id>.r2.cloudflarestorage.com` → your `R2_ENDPOINT`.
 
@@ -136,7 +138,7 @@ Copy the **Access Key ID** and **Secret Access Key** (the secret shows only once
 
    | Variable | Value |
    |----------|-------|
-   | `R2_BUCKET` | bucket name, e.g. `church-library` |
+   | `R2_BUCKET` | bucket name, e.g. `my-library` |
    | `R2_ENDPOINT` | `https://<account-id>.r2.cloudflarestorage.com` |
    | `LITESTREAM_ACCESS_KEY_ID` | Access Key ID |
    | `LITESTREAM_SECRET_ACCESS_KEY` | Secret Access Key |
@@ -158,6 +160,32 @@ doesn't block borrow/return. The `LEDGER` log lines are an independent record yo
 replay to rebuild the DB if the bucket is ever lost. Free-tier cold starts take
 ~30–60 s after idle.
 
+## Read-only public viewer (optional)
+
+A second, tiny Render service that shows **only the collection** — no scanning,
+borrowing, or admin. Useful when the full app runs privately on your own machine
+and you want a public (or password-gated) catalog.
+
+Data flow: run the full app locally → `python scripts/publish_catalog.py` exports
+the books table (never borrower data) as one JSON file to a private R2 bucket → the
+viewer (`viewer/app.py`) caches that file and serves it, re-checking at most once a
+minute via ETag.
+
+Setup in short — full steps and troubleshooting in
+[docs/viewer_design.md](docs/viewer_design.md):
+
+1. R2 bucket + two tokens scoped to it: **Read & Write** (laptop) and **Read only**
+   (viewer).
+2. Fill the `r2:` section of `local_config/config.yml`, then
+   `python scripts/publish_catalog.py`.
+3. Render → **New + → Web Service** (manual — deliberately *not* in `render.yaml`,
+   so it stays independent of the Blueprint above):
+   build `pip install -r viewer/requirements.txt`,
+   start `gunicorn --workers 1 --threads 8 --bind 0.0.0.0:$PORT viewer.app:app`,
+   env vars `R2_BUCKET` · `R2_ENDPOINT` · `R2_ACCESS_KEY_ID` /
+   `R2_SECRET_ACCESS_KEY` (the read-only pair), optional `BOOK_PASSWORD` /
+   `BOOK_TITLE` / `BOOK_THEME` / `BOOK_LANG`.
+
 ## Config reference
 
 ### `local_config/config.yml` (local only, git-ignored)
@@ -170,6 +198,7 @@ replay to rebuild the DB if the bucket is ever lost. Free-tier cold starts take
 | `title` | `"My Library"` | Page heading / tab title |
 | `theme` | `apple` | `apple` / `win95` / `terminal` |
 | `server.https.certfile/keyfile` | *(blank = adhoc)* | mkcert files to skip the warning |
+| `r2.*` | *(blank)* | Upload target for `scripts/publish_catalog.py` (public viewer) — see [docs/viewer_design.md](docs/viewer_design.md) |
 
 ### Environment variables (Render / production)
 
