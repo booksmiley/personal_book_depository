@@ -166,10 +166,11 @@ A second, tiny Render service that shows **only the collection** — no scanning
 borrowing, or admin. Useful when the full app runs privately on your own machine
 and you want a public (or password-gated) catalog.
 
-Data flow: run the full app locally → `python scripts/publish_catalog.py` exports
-the books table (never borrower data) as one JSON file to a private R2 bucket → the
-viewer (`viewer/app.py`) caches that file and serves it, re-checking at most once a
-minute via ETag.
+Data flow: run the full app locally → the books table (never borrower data) is
+exported as one JSON file to a private R2 bucket → the viewer (`viewer/app.py`)
+caches that file and serves it, re-checking at most once a minute via ETag.
+Publishing happens automatically every 12 h while `run_local.py` is running, or
+on demand with `python scripts/publish_catalog.py`.
 
 Setup in short — full steps and troubleshooting in
 [docs/viewer_design.md](docs/viewer_design.md):

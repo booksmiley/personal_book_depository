@@ -17,6 +17,7 @@ Data dir comes from local_config/config.yml / BOOK_DATA_DIR, same as the app.
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -104,6 +105,42 @@ def upload(body: bytes, r2: dict) -> str:
     return resp["ETag"]
 
 
+# --- Shared with run_local's auto-publisher -----------------------------------
+
+CATALOG_FILENAME = "catalog.json"
+STALE_AFTER = 12 * 3600  # seconds; run_local republishes past this age
+
+
+def local_copy_path() -> Path:
+    # Imported lazily: db.py reads BOOK_DATA_DIR at import time (see fetch_books).
+    from book_depository.db import DATA_DIR
+
+    return DATA_DIR / CATALOG_FILENAME
+
+
+def publish(r2: dict) -> tuple[int, str]:
+    """Fetch → build → upload → save the local copy. Returns (book count, ETag).
+
+    The local copy is written only AFTER a successful upload, so its mtime marks
+    the last SUCCESSFUL publish — if the upload fails (laptop offline), the marker
+    stays old and the next staleness check retries instead of waiting 12 h."""
+    books = fetch_books()
+    body = build_payload(books)
+    etag = upload(body, r2)
+    local_copy_path().write_bytes(body)
+    return len(books), etag
+
+
+def publish_if_stale(cfg: dict) -> bool:
+    """Publish when the local copy is missing or older than STALE_AFTER seconds.
+    Returns True if a publish happened."""
+    local = local_copy_path()
+    if local.exists() and time.time() - local.stat().st_mtime < STALE_AFTER:
+        return False
+    publish(r2_settings(cfg))
+    return True
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true",
@@ -123,6 +160,7 @@ def main() -> int:
 
     r2 = r2_settings(cfg)
     etag = upload(body, r2)
+    local_copy_path().write_bytes(body)  # manual runs also reset the 12 h timer
     print(f"uploaded {len(books)} books ({len(body)} bytes) "
           f"to {r2['bucket']}/{r2['key']} etag={etag}")
     return 0

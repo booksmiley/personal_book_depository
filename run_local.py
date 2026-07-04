@@ -9,12 +9,51 @@ production on Render still uses gunicorn (see render.yaml).
 Requires the local-only deps:  pip install -r requirements-local.txt
 """
 
+import logging
 import os
+import threading
+import time
 from pathlib import Path
 
 from book_depository.config import load_config
 
 CONFIG_PATH = Path(__file__).resolve().parent / "local_config" / "config.yml"
+
+# How often the background publisher re-checks the snapshot's age. The publish
+# itself only happens when the snapshot is older than publish_catalog.STALE_AFTER
+# (12 h), so a small check interval just bounds how late a republish can be.
+PUBLISH_CHECK_EVERY = 15 * 60  # seconds
+
+
+def _start_catalog_publisher(cfg: dict) -> None:
+    """Auto-publish for the public viewer: a daemon thread republishes the catalog
+    (local data-dir copy + upload to R2) whenever the snapshot is older than 12 h.
+    A no-op unless the `r2:` section of config.yml is filled in."""
+    r2 = cfg.get("r2") or {}
+    if not all(
+        r2.get(k) for k in ("bucket", "endpoint", "access_key_id", "secret_access_key")
+    ):
+        return  # no publish target configured — feature off
+
+    # The Werkzeug reloader runs this script twice (watcher parent + serving child);
+    # only the child that actually serves should publish.
+    if os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return
+
+    from scripts.publish_catalog import publish_if_stale
+
+    log = logging.getLogger("publish")
+
+    def loop() -> None:
+        while True:
+            try:
+                if publish_if_stale(cfg):
+                    log.info("catalog snapshot republished for the public viewer")
+            except Exception:
+                log.exception("catalog publish failed; retrying next check")
+            time.sleep(PUBLISH_CHECK_EVERY)
+
+    threading.Thread(target=loop, daemon=True, name="catalog-publisher").start()
 
 
 def main() -> None:
@@ -61,6 +100,10 @@ def main() -> None:
     # Persist the reconstruction log locally (date-split files in the data dir). On
     # Render these lines go to the platform logs instead, so this is local-only.
     enable_file_logging(data_dir)
+
+    # Keep the public viewer fresh without manual publish runs (needs env set and
+    # the app imported first, so db/logging are already configured).
+    _start_catalog_publisher(cfg)
 
     # Decide the TLS context.
     https = server.get("https", {})

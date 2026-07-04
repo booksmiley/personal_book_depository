@@ -19,10 +19,17 @@ scripts/publish_catalog.py ── PUT ─────────┘            
                                                               GET /api/books  cached list
 ```
 
-- **Publishing is a deliberate step.** `python scripts/publish_catalog.py` reads the
-  local SQLite and PUTs one JSON file — `{"generated_at": …, "books": […]}` — to the
-  bucket. A single-object PUT is atomic, so the viewer never sees a half-written
-  file. Run it after any change you want to go public; running it twice is harmless.
+- **Publishing.** `python scripts/publish_catalog.py` reads the local SQLite and
+  PUTs one JSON file — `{"generated_at": …, "books": […]}` — to the bucket. A
+  single-object PUT is atomic, so the viewer never sees a half-written file.
+  Running it twice is harmless. While the library runs via `run_local.py`, a
+  background thread republishes automatically whenever the snapshot is older than
+  12 h; the manual run still works anytime for an instant refresh (both reset the
+  same timer).
+- **The snapshot's local copy** (`<data dir>/catalog.json`) is written only after a
+  successful upload, so its mtime marks the last successful publish — a failed
+  upload (laptop offline) is retried on the next 15-minute check instead of waiting
+  another 12 h.
 - **The viewer caches in memory.** It re-checks R2 at most once per
   `VIEWER_CACHE_TTL` seconds using `If-None-Match` with the stored ETag, so
   unchanged data costs a bodyless 304. If R2 is unreachable it keeps serving the
