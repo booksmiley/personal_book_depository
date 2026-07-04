@@ -22,10 +22,26 @@ _COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg?default=false"
 TIMEOUT = 10
 
 
+_COVERS_HOST = "covers.openlibrary.org"  # separate host, separate throttle bucket
+
+
 def cover_url(isbn: str) -> str:
     """Static Open Library cover URL (constructed, no network — the cover may not
     exist; with ?default=false a miss is an honest 404)."""
     return _COVER_URL.format(isbn=isbn)
+
+
+def cover_exists(isbn: str) -> bool:
+    """True if Open Library actually has a cover for this ISBN (HEAD request).
+    A network failure counts as "no", so callers fall through to another source."""
+    throttle.wait(_COVERS_HOST)
+    try:
+        resp = requests.head(
+            _COVER_URL.format(isbn=isbn), timeout=TIMEOUT, allow_redirects=True
+        )
+    except requests.RequestException:
+        return False
+    return resp.status_code == 200
 
 
 def resolve_authors(authors_refs: list) -> str:
@@ -56,7 +72,9 @@ def fetch_open_library_metadata(isbn: str) -> dict | None:
     return {
         "title": data.get("title", ""),
         "author": authors,
-        "cover_url": cover_url(isbn),
+        # Verified: OL often has the book's metadata but no cover image, and an
+        # unverified pattern URL would block the merge from filling a real one.
+        "cover_url": cover_url(isbn) if cover_exists(isbn) else "",
         "publisher": data.get("publishers", [""])[0],  # OL: list, not a string
         "year": data.get("publish_date", ""),  # OL: publish_date, not publishedDate
     }

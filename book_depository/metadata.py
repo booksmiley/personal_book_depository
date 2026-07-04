@@ -142,7 +142,8 @@ def _from_douban(isbn: str) -> Book | None:
         isbn=isbn,
         title=data["title"],
         author=data["author"],
-        cover_url=_cover_url(isbn),  # Douban blocks hotlinking; use GB or OL instead
+        # Prefer GB/OL (reliably hotlinkable); Douban's own image is the last resort.
+        cover_url=_cover_url(isbn, own=data.get("cover_url", "")),
         publisher=data["publisher"],
         year=data["year"],
         # No language: Douban lists English/foreign books too and the scraper can't
@@ -182,9 +183,18 @@ def _from_ects(isbn: str) -> Book | None:
     )
 
 
-def _cover_url(isbn: str) -> str:
-    """Hotlink-friendly cover URL: Google Books thumbnail, else Open Library."""
-    return google.thumbnail(isbn) or openlibrary.cover_url(isbn)
+def _cover_url(isbn: str, own: str = "") -> str:
+    """Best displayable cover: Google Books thumbnail (network-verified) → Open
+    Library (existence-checked; a pattern URL alone may be a blank placeholder) →
+    the source's OWN image as a last resort. Douban fingerprints non-browser
+    clients so its CDN can't be verified server-side; if a browser is blocked
+    too, the frontend swaps the failure for the no-cover tile."""
+    url = google.thumbnail(isbn)
+    if url:
+        return url
+    if openlibrary.cover_exists(isbn):
+        return openlibrary.cover_url(isbn)
+    return own
 
 
 # --- Title search: return a LIST of candidates for the user to pick from ---
