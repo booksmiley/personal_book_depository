@@ -209,6 +209,25 @@ function coverSrc(url) {
   return "";
 }
 
+// Open Library serves 200 + a transparent 1×1 GIF when it has no cover (old DB
+// rows still carry such URLs), so a "successful" load can be blank. Swap blank
+// AND failed covers for the styled no-cover tile.
+function watchCover(img, title) {
+  const check = () => {
+    if (img.naturalWidth <= 1) {
+      const tile = document.createElement("div");
+      tile.className = "no-cover";
+      tile.textContent = title || "";
+      img.replaceWith(tile);
+    }
+  };
+  if (img.complete) check(); // cached images may load before listeners attach
+  else {
+    img.addEventListener("load", check);
+    img.addEventListener("error", check);
+  }
+}
+
 // Shared book blurb (cover + title/author + availability when known).
 function bookInfoHtml(book, showCounts) {
   const counts =
@@ -216,8 +235,9 @@ function bookInfoHtml(book, showCounts) {
       ? `<br /><small>${book.available} of ${book.total_count} available</small>`
       : "";
   const safeCover = coverSrc(book.cover_url);
+  // onload guard: drop Open Library's blank 1×1 placeholder like a failed load.
   return `
-    ${safeCover ? `<img src="${esc(safeCover)}" alt="cover" onerror="this.remove()" />` : ""}
+    ${safeCover ? `<img src="${esc(safeCover)}" alt="cover" onerror="this.remove()" onload="if(this.naturalWidth<2)this.remove()" />` : ""}
     <div>
       <strong>${esc(book.title || "(no title)")}</strong><br />
       ${esc(book.author || "")}<br />
@@ -516,7 +536,7 @@ function renderGrid(books) {
     .map((book) => {
       const src = coverSrc(book.cover_url);
       const cover = src
-        ? `<img src="${esc(src)}" alt="cover" loading="lazy" onerror="this.remove()" />`
+        ? `<img src="${esc(src)}" alt="cover" loading="lazy" />`
         : `<div class="no-cover">${esc(book.title || "")}</div>`;
       const avail = book.available ?? 0;
       const total = book.total_count ?? 1;
@@ -535,6 +555,8 @@ function renderGrid(books) {
     .join("");
   collectionBodyEl.innerHTML = `<div class="book-grid">${cards}</div>`;
   collectionBodyEl.querySelectorAll(".book-card").forEach((card, i) => {
+    const img = card.querySelector("img");
+    if (img) watchCover(img, books[i].title);
     card.addEventListener("click", () => openCollectionAction(books[i], card, "grid"));
   });
 }

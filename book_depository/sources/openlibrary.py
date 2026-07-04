@@ -16,12 +16,15 @@ _HOST = "openlibrary.org"
 _ISBN_URL = "https://openlibrary.org/isbn/{isbn}.json"
 _SEARCH_URL = "https://openlibrary.org/search.json"
 _AUTHORS_URL = "https://openlibrary.org{key}.json"
-_COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg"
+# ?default=false: a missing cover answers 404 instead of a blank 1×1 GIF, so the
+# frontend's error/blank handling can show its no-cover tile.
+_COVER_URL = "https://covers.openlibrary.org/b/isbn/{isbn}-M.jpg?default=false"
 TIMEOUT = 10
 
 
 def cover_url(isbn: str) -> str:
-    """Static Open Library cover URL (no network; may resolve to a blank image)."""
+    """Static Open Library cover URL (constructed, no network — the cover may not
+    exist; with ?default=false a miss is an honest 404)."""
     return _COVER_URL.format(isbn=isbn)
 
 

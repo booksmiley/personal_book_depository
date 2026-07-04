@@ -33,6 +33,25 @@ function coverSrc(url) {
   return "";
 }
 
+// Open Library serves 200 + a transparent 1×1 GIF when it has no cover (old DB
+// rows still carry such URLs), so a "successful" load can be blank. Swap blank
+// AND failed covers for the styled no-cover tile.
+function watchCover(img, title) {
+  const check = () => {
+    if (img.naturalWidth <= 1) {
+      const tile = document.createElement("div");
+      tile.className = "no-cover";
+      tile.textContent = title || "";
+      img.replaceWith(tile);
+    }
+  };
+  if (img.complete) check(); // cached images may load before listeners attach
+  else {
+    img.addEventListener("load", check);
+    img.addEventListener("error", check);
+  }
+}
+
 // --- Grid / list toggle (persisted per browser) ---
 let cachedBooks = null;
 let collectionView = localStorage.getItem("collectionView") || "grid";
@@ -156,7 +175,7 @@ function renderGrid(books) {
     .map((book) => {
       const src = coverSrc(book.cover_url);
       const cover = src
-        ? `<img src="${esc(src)}" alt="cover" loading="lazy" onerror="this.remove()" />`
+        ? `<img src="${esc(src)}" alt="cover" loading="lazy" />`
         : `<div class="no-cover">${esc(book.title || "")}</div>`;
       const avail = book.available ?? 0;
       const total = book.total_count ?? 1;
@@ -175,6 +194,10 @@ function renderGrid(books) {
     .join("");
   collectionBodyEl.innerHTML = `<div class="book-grid">${cards}</div>`;
   // Read-only: cards are not clickable (no borrow/return here).
+  collectionBodyEl.querySelectorAll(".book-card").forEach((card, i) => {
+    const img = card.querySelector("img");
+    if (img) watchCover(img, books[i].title);
+  });
 }
 
 function renderList(books) {
