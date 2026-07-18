@@ -86,10 +86,24 @@ Tags are listed with their scope and example authors already in this library.
 | `biography & memoir` | Lives and memoirs: 蕃薯人的故事, Gorz's *Letter to D*, Agatha Christie's dig memoir, sports narratives |
 | `books about books` | Book collecting and reading culture: 旧书与珍本, 西书东藏, *Revenge of the Librarians* |
 
+### Other
+
+| Tag | Scope / examples |
+|---|---|
+| `stamp catalog` | Philately reference: さくら日本切手カタログ (owner's call: its own tag, not folded elsewhere) |
+
 Cross-tag freely when a book truly straddles groups: Luther's Galatians
 lectures → `luther, biblical commentary`; *The Gospel According to Peanuts* →
 `christian living, comics & graphic novels`; 金融物理学 → `quant finance, physics`.
-A one-off oddity (e.g. a stamp catalog) gets the nearest tag rather than a new one.
+A one-off oddity gets the nearest existing tag rather than a new one, unless the
+owner rules otherwise (see below).
+
+### Settled rulings (owner-decided — don't re-litigate)
+
+- 统计信仰 (徐鸿鹄) → `mathematics` (statistics content, despite the title)
+- 重建范型 (Denis Alexander) → `public theology`
+- さくら日本切手カタログ → `stamp catalog`
+- *Jane legt het uit* → `physics`
 
 ## Fill-in procedure
 
