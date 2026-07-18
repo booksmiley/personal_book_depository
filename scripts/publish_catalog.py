@@ -36,7 +36,7 @@ DEFAULT_OWNER = "lib_admin"
 # Mirror of app.py's _EXPORT_COLUMNS: the fields that are safe to publish.
 # Deliberately NO loan/borrower data — the public viewer must never see it.
 PUBLIC_COLUMNS = (
-    "isbn", "title", "author", "publisher", "year", "language",
+    "isbn", "title", "author", "publisher", "year", "language", "tags",
     "total_count", "available", "source", "added_at", "cover_url",
 )
 

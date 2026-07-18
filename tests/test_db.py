@@ -100,9 +100,9 @@ def test_added_at_migration_backfills_existing_rows(data_dir):
     )
     raw.commit()
 
-    run_migrations(raw)  # applies 0003 only
+    run_migrations(raw)  # applies 0003 and anything later
 
-    assert raw.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert raw.execute("PRAGMA user_version").fetchone()[0] >= 3
     added = raw.execute(
         "SELECT added_at FROM books WHERE isbn = '9780000000009'"
     ).fetchone()[0]
@@ -118,3 +118,11 @@ def test_migrations_run_and_are_idempotent(data_dir):
     v2 = c2.execute("PRAGMA user_version").fetchone()[0]
     c2.close()
     assert v1 > 0 and v1 == v2
+
+
+def test_tags_start_empty_and_are_editable(conn, book):
+    db.add_book(conn, book())
+    row = db.find_book_by_isbn(conn, ISBN)
+    assert row["tags"] is None  # online metadata never sets tags (docs/tagging.md)
+    updated = db.update_book(conn, ISBN, {"tags": "systematic theology, luther"})
+    assert updated["tags"] == "systematic theology, luther"

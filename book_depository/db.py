@@ -96,7 +96,7 @@ def add_copy(conn: sqlite3.Connection, isbn: str, commit: bool = True) -> int:
 # Fields an admin may edit. NOT isbn (the key) and NOT available (derived from
 # total_count minus open loans). These names are a fixed whitelist — never user
 # input — so it's safe to interpolate them into the UPDATE column list below.
-EDITABLE_FIELDS = ("title", "author", "publisher", "year", "language", "cover_url", "total_count")
+EDITABLE_FIELDS = ("title", "author", "publisher", "year", "language", "tags", "cover_url", "total_count")
 
 
 def update_book(conn: sqlite3.Connection, isbn: str, fields: dict, commit: bool = True):

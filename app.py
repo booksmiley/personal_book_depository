@@ -533,7 +533,7 @@ def list_books():
 
 # Columns to include in an export (skip book_id — an internal autoincrement).
 _EXPORT_COLUMNS = (
-    "isbn", "title", "author", "publisher", "year", "language",
+    "isbn", "title", "author", "publisher", "year", "language", "tags",
     "total_count", "available", "source", "added_at", "cover_url",
 )
 
