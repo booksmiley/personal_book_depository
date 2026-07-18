@@ -22,6 +22,9 @@ Stack: Python + Flask + SQLite, zero-build JS frontend.
 - **Admin mode** — set an admin password to edit/delete records, **add books manually**
   (no ISBN needed), and open a **loans page** — who has what, with due-soon (yellow) and
   overdue (red) highlighting.
+- **Subject tags** — a hand-curated `tags` column groups books by topic
+  (e.g. `systematic theology`, `vol trading`); metadata lookup never fills it.
+  Vocabulary and fill-in playbook: `docs/tagging.md`.
 - **Themes & language** — `apple` / `win95` / `terminal`; UI language `en` or
   `zh-Hant` (繁體) for the borrow/return menu and messages, via `BOOK_LANG`.
 - **Durable on Render** — Litestream replicates SQLite to object storage; a JSON
