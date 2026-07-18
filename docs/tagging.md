@@ -39,8 +39,7 @@ Tags are listed with their scope and example authors already in this library.
 | `church history` | Movements, eras, figures: Machen, Noll, Carl Henry, Brainerd's biography, Olson |
 | `christian living` | Devotion, sanctification, counselling: Powlison, Bridges, Ferguson, Lloyd-Jones, Ryle's *Holiness* |
 | `ministry & preaching` | Preaching and church ministry: Buechner, Willimon, Keller, Lovelace |
-| `christian ethics` | Ethics from Scripture: Hays (NT), Wright (OT), Daniel Bell |
-| `public theology` | Faith in public life: Volf, Hauerwas & Willimon, Niebuhr, Gordon Graham |
+| `public theology` | Faith in public life and Christian ethics: Volf, Hauerwas & Willimon, Niebuhr, Gordon Graham, Hays (NT ethics), Wright (OT ethics), Daniel Bell |
 
 ### History, archaeology & society
 
@@ -48,8 +47,7 @@ Tags are listed with their scope and example authors already in this library.
 |---|---|
 | `ancient near east history` | ANE history/archaeology/texts: Pritchard, Kenyon, Woolley, Saggs, Gordon, Matthews |
 | `ancient chinese history` | Pre-imperial China, bronzes, oracle bones: 张光直, 许宏, 李学勤, 李硕《翦商》, 许倬云, 顾颉刚 |
-| `modern chinese history` | 19th c.–present China: 沈志華, 龍應台, Joel Andreas |
-| `twentieth century history` | Totalitarianism, war, Cold War: Klemperer, Milton Mayer, 弯曲的脊梁, GDR reading culture |
+| `general history` | Any history outside the two ancient shelves above — modern China (沈志華, 龍應台, Joel Andreas), 20th-century totalitarianism and the Cold War (Klemperer, Milton Mayer, 弯曲的脊梁, GDR reading culture), and future history books that aren't ANE / ancient China |
 | `mythology & religion studies` | Comparative myth and religion: Eliade, Hooke, 中国创世神话, the Babylonian flood legend |
 | `reportage` | Long-form on places and people: Peter Hessler (何偉) titles, *The Buried* |
 
@@ -80,7 +78,7 @@ Tags are listed with their scope and example authors already in this library.
 | `spy fiction` | The espionage shelf: John le Carré, Graham Greene's *The Human Factor* |
 | `chinese literature` | Chinese poetry, essays, classics: 北島, 董橋, 古文观止, 世說新語, 六神磊磊 |
 | `comics & graphic novels` | Watchmen, Maus, 乒乓, the DC volumes, Tom Gauld |
-| `philosophy` | Charles Taylor, Kant studies, existentialism, Tillich/Pannenberg (cross-tag with theology) |
+| `philosophy` | Charles Taylor, Kant studies, existentialism, Tillich/Pannenberg (cross-tag with theology); political and social thought: Sowell, the Federalist Papers |
 | `biography & memoir` | Lives and memoirs: 蕃薯人的故事, Gorz's *Letter to D*, Agatha Christie's dig memoir, sports narratives |
 | `books about books` | Book collecting and reading culture: 旧书与珍本, 西书东藏, *Revenge of the Librarians* |
 
@@ -88,7 +86,7 @@ Tags are listed with their scope and example authors already in this library.
 
 | Tag | Scope / examples |
 |---|---|
-| `non-fiction` | Catch-all for non-fiction that fits no other shelf: Sowell's 知识分子与社会, the Federalist Papers, Thurber, Chesterton's essays, the stamp catalog さくら日本切手カタログ |
+| `non-fiction` | Catch-all for non-fiction that fits no other shelf: Thurber, Chesterton's essays, the stamp catalog さくら日本切手カタログ |
 
 Cross-tag freely when a book truly straddles groups: Luther's Galatians
 lectures → `lutheran theology, biblical commentary`; *The Gospel According to
