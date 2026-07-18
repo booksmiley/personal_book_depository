@@ -333,14 +333,14 @@ const HIDDEN_COLUMNS = new Set(["book_id", "cover_url"]);
 // Pretty labels; any column not listed falls back to its raw DB name.
 const COLUMN_LABELS = {
   isbn: "ISBN", title: "Title", author: "Author", publisher: "Publisher",
-  year: "Year", language: "Language", source: "Source",
+  year: "Year", language: "Language", tags: "Tags", source: "Source",
   total_count: "Copies", available: "Available", added_at: "Added",
 };
 const DEFAULT_COLUMNS = ["title", "author", "year", "publisher", "available"];
 // User-friendly column order (the API returns keys alphabetically). Any column not
 // listed here — e.g. a future migration field — is appended after these.
 const COLUMN_ORDER = [
-  "title", "author", "year", "publisher", "language",
+  "title", "author", "year", "publisher", "language", "tags",
   "isbn", "source", "added_at", "total_count", "available",
 ];
 
@@ -512,7 +512,7 @@ function applyCollectionFilter() {
   const q = (collectionSearch.value || "").trim().toLowerCase();
   const books = q
     ? cachedBooks.filter((b) =>
-        [b.title, b.author, b.isbn].some((v) => (v || "").toLowerCase().includes(q)),
+        [b.title, b.author, b.isbn, b.tags].some((v) => (v || "").toLowerCase().includes(q)),
       )
     : cachedBooks;
   renderCollection(books);
@@ -694,8 +694,8 @@ function fillCollectionActionUI(book, openLoans, container) {
   container.querySelector(".col-edit-btn")?.addEventListener("click", () => {
     const fields = [
       ["title", "Title"], ["author", "Author"], ["publisher", "Publisher"],
-      ["year", "Year"], ["language", "Language"], ["cover_url", "Cover URL"],
-      ["total_count", "Copies"],
+      ["year", "Year"], ["language", "Language"], ["tags", "Tags"],
+      ["cover_url", "Cover URL"], ["total_count", "Copies"],
     ];
     formEl.innerHTML =
       fields
