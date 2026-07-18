@@ -447,6 +447,7 @@ async function loadCollection() {
   try {
     const { books } = await getJson("/api/books");
     cachedBooks = books;
+    buildTagFilter(cachedBooks);
     applyCollectionFilter();
   } catch (err) {
     collectionBodyEl.innerHTML = `<p style="color:#c00">${esc(err.message)}</p>`;
@@ -505,16 +506,48 @@ function renderLoans(loans) {
     </table>`;
 }
 
-// Client-side filter over the already-loaded books (title / author / ISBN substring).
+// Client-side filter over the already-loaded books: free-text substring search
+// (title / author / ISBN / tags) AND the exact-tag dropdown, combined.
 const collectionSearch = document.getElementById("collection-search");
+const tagFilter = document.getElementById("tag-filter");
+let selectedTag = "";
+
+function bookTags(b) {
+  return (b.tags || "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+// Rebuild the dropdown from the loaded books: every distinct tag with its count.
+// Stays hidden while the library carries no tags at all.
+function buildTagFilter(books) {
+  const counts = new Map();
+  for (const b of books) for (const t of bookTags(b)) counts.set(t, (counts.get(t) || 0) + 1);
+  const tags = [...counts.keys()].sort((a, b) => a.localeCompare(b));
+  tagFilter.hidden = tags.length === 0;
+  if (selectedTag && !counts.has(selectedTag)) selectedTag = "";
+  tagFilter.innerHTML =
+    `<option value="">${esc(T("tag_all"))}</option>` +
+    tags
+      .map(
+        (t) =>
+          `<option value="${esc(t)}"${t === selectedTag ? " selected" : ""}>${esc(t)} (${counts.get(t)})</option>`,
+      )
+      .join("");
+}
+tagFilter.addEventListener("change", () => {
+  selectedTag = tagFilter.value;
+  applyCollectionFilter();
+});
+
 function applyCollectionFilter() {
   if (!cachedBooks) return;
   const q = (collectionSearch.value || "").trim().toLowerCase();
-  const books = q
-    ? cachedBooks.filter((b) =>
-        [b.title, b.author, b.isbn, b.tags].some((v) => (v || "").toLowerCase().includes(q)),
-      )
+  let books = selectedTag
+    ? cachedBooks.filter((b) => bookTags(b).includes(selectedTag))
     : cachedBooks;
+  if (q)
+    books = books.filter((b) =>
+      [b.title, b.author, b.isbn, b.tags].some((v) => (v || "").toLowerCase().includes(q)),
+    );
   renderCollection(books);
 }
 collectionSearch.addEventListener("input", applyCollectionFilter);

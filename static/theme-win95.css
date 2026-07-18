@@ -244,6 +244,9 @@ button:disabled { opacity: 0.45; cursor: default; }
 
 /* Collection filter */
 #collection-search { width: 100%; font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; margin: 0 0 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
+.filter-row { display: flex; gap: 4px; }
+.filter-row #collection-search { flex: 1; min-width: 0; }
+#tag-filter { max-width: 45%; font-family: "Courier New", monospace; font-size: 0.78rem; padding: 2px 4px; margin: 0 0 4px; border: 2px solid; border-color: var(--sh) var(--hi) var(--hi) var(--sh); background: #fff; color: var(--dk); outline: none; }
 
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */

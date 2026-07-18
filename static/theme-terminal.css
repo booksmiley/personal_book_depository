@@ -207,6 +207,10 @@ button:disabled { opacity: 0.3; cursor: default; }
 /* Collection filter */
 #collection-search { width: 100%; font-family: inherit; font-size: 0.82rem; padding: 5px 8px; margin: 0 0 0.5rem; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
 #collection-search:focus { border-color: var(--accent); }
+.filter-row { display: flex; gap: 0.5rem; }
+.filter-row #collection-search { flex: 1; min-width: 0; }
+#tag-filter { max-width: 45%; font-family: inherit; font-size: 0.82rem; padding: 5px 8px; margin: 0 0 0.5rem; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); outline: none; }
+#tag-filter:focus { border-color: var(--accent); }
 
 /* Manual entry (admin) */
 #manual-book-form[hidden] { display: none; } /* [hidden] must beat the display:flex below */

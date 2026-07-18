@@ -80,8 +80,11 @@
         <input id="import-file" type="file" accept=".csv,text/csv" hidden />
         <button id="reload-btn">{{ strings.btn_reload }}</button>
       </div>
-      <input id="collection-search" type="search" placeholder="{{ strings.ph_filter }}"
-             autocomplete="off" aria-label="{{ strings.ph_filter }}" />
+      <div class="filter-row">
+        <input id="collection-search" type="search" placeholder="{{ strings.ph_filter }}"
+               autocomplete="off" aria-label="{{ strings.ph_filter }}" />
+        <select id="tag-filter" aria-label="{{ strings.tag_all }}" hidden></select>
+      </div>
       <div id="column-panel" class="column-panel" hidden></div>
       <div id="collection-body"></div>
     </section>

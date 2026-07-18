@@ -36,6 +36,7 @@ _EN = {
     "ph_name": "Your name",
     "ph_title": "Search by title",
     "ph_filter": "Filter by title / author…",
+    "tag_all": "All tags",
     # Manual entry (admin)
     "btn_add_manual": "＋ Manual entry",
     "mb_title": "Title (required)",
@@ -141,6 +142,7 @@ _ZH_HANT = {
     "ph_name": "您的姓名",
     "ph_title": "以書名搜索",
     "ph_filter": "篩選書名／作者……",
+    "tag_all": "全部標籤",
     # Manual entry (admin)
     "btn_add_manual": "＋ 手動輸入",
     "mb_title": "書名（必填）",
