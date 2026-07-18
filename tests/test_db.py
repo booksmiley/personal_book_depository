@@ -124,5 +124,5 @@ def test_tags_start_empty_and_are_editable(conn, book):
     db.add_book(conn, book())
     row = db.find_book_by_isbn(conn, ISBN)
     assert row["tags"] is None  # online metadata never sets tags (docs/tagging.md)
-    updated = db.update_book(conn, ISBN, {"tags": "systematic theology, luther"})
-    assert updated["tags"] == "systematic theology, luther"
+    updated = db.update_book(conn, ISBN, {"tags": "systematic theology, lutheran theology"})
+    assert updated["tags"] == "systematic theology, lutheran theology"

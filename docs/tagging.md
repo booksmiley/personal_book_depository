@@ -9,7 +9,7 @@ is the standing instruction for filling them in later.
 
 ## Format rules
 
-- Comma-and-space separated, lowercase English: `systematic theology, luther`.
+- Comma-and-space separated, lowercase English: `systematic theology, lutheran theology`.
 - 1–3 tags per book. The **first tag is the primary category** (the "shelf");
   later tags are cross-references.
 - Reuse the vocabulary below before inventing a tag. Add a new tag only when at
@@ -34,8 +34,8 @@ Tags are listed with their scope and example authors already in this library.
 | `old testament studies` | OT history, criticism, narrative art: Van Seters, Fokkelman, Provan/Long/Longman, 摩西五經導論 |
 | `new testament studies` | NT and Pauline studies: Westerholm, Hays' backdrop works, Vanhoozer's NT interpretation |
 | `bible & study aids` | Bibles themselves, study Bibles, biblical-language grammars: ESV editions, Wenham's NT Greek, Stibbs |
-| `luther` | Luther and Luther studies: 路德文集, the Galatians/Romans lectures, Table Talk, Bayer, Becker, Forde |
-| `barth` | Barth and Barth studies: 教會教義學, Gibson & Strange, Morrison, 曾劭愷 |
+| `lutheran theology` | Luther and Luther studies: 路德文集, the Galatians/Romans lectures, Table Talk, Bayer, Becker, Forde |
+| `barth theology` | Barth and Barth studies: 教會教義學, Gibson & Strange, Morrison, 曾劭愷 |
 | `church history` | Movements, eras, figures: Machen, Noll, Carl Henry, Brainerd's biography, Olson |
 | `christian living` | Devotion, sanctification, counselling: Powlison, Bridges, Ferguson, Lloyd-Jones, Ryle's *Holiness* |
 | `ministry & preaching` | Preaching and church ministry: Buechner, Willimon, Keller, Lovelace |
@@ -52,7 +52,6 @@ Tags are listed with their scope and example authors already in this library.
 | `twentieth century history` | Totalitarianism, war, Cold War: Klemperer, Milton Mayer, 弯曲的脊梁, GDR reading culture |
 | `mythology & religion studies` | Comparative myth and religion: Eliade, Hooke, 中国创世神话, the Babylonian flood legend |
 | `reportage` | Long-form on places and people: Peter Hessler (何偉) titles, *The Buried* |
-| `politics & society` | Secular political/social thought: Sowell, the Federalist Papers |
 
 ### Science & technology
 
@@ -81,7 +80,6 @@ Tags are listed with their scope and example authors already in this library.
 | `spy fiction` | The espionage shelf: John le Carré, Graham Greene's *The Human Factor* |
 | `chinese literature` | Chinese poetry, essays, classics: 北島, 董橋, 古文观止, 世說新語, 六神磊磊 |
 | `comics & graphic novels` | Watchmen, Maus, 乒乓, the DC volumes, Tom Gauld |
-| `essays & humor` | Thurber, Chesterton's essays |
 | `philosophy` | Charles Taylor, Kant studies, existentialism, Tillich/Pannenberg (cross-tag with theology) |
 | `biography & memoir` | Lives and memoirs: 蕃薯人的故事, Gorz's *Letter to D*, Agatha Christie's dig memoir, sports narratives |
 | `books about books` | Book collecting and reading culture: 旧书与珍本, 西书东藏, *Revenge of the Librarians* |
@@ -90,19 +88,20 @@ Tags are listed with their scope and example authors already in this library.
 
 | Tag | Scope / examples |
 |---|---|
-| `stamp catalog` | Philately reference: さくら日本切手カタログ (owner's call: its own tag, not folded elsewhere) |
+| `non-fiction` | Catch-all for non-fiction that fits no other shelf: Sowell's 知识分子与社会, the Federalist Papers, Thurber, Chesterton's essays, the stamp catalog さくら日本切手カタログ |
 
 Cross-tag freely when a book truly straddles groups: Luther's Galatians
-lectures → `luther, biblical commentary`; *The Gospel According to Peanuts* →
-`christian living, comics & graphic novels`; 金融物理学 → `quant finance, physics`.
-A one-off oddity gets the nearest existing tag rather than a new one, unless the
-owner rules otherwise (see below).
+lectures → `lutheran theology, biblical commentary`; *The Gospel According to
+Peanuts* → `christian living, comics & graphic novels`; 金融物理学 →
+`quant finance, physics`. A one-off oddity that fits no subject shelf goes to
+`non-fiction` rather than getting a new tag, unless the owner rules otherwise
+(see below).
 
 ### Settled rulings (owner-decided — don't re-litigate)
 
 - 统计信仰 (徐鸿鹄) → `mathematics` (statistics content, despite the title)
 - 重建范型 (Denis Alexander) → `public theology`
-- さくら日本切手カタログ → `stamp catalog`
+- さくら日本切手カタログ → `non-fiction`
 - *Jane legt het uit* → `physics`
 
 ## Fill-in procedure
