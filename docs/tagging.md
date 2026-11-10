@@ -88,6 +88,15 @@ Tags are listed with their scope and example authors already in this library.
 |---|---|
 | `non-fiction` | Catch-all for non-fiction that fits no other shelf: Thurber, Chesterton's essays, the stamp catalog さくら日本切手カタログ |
 
+### Status tags
+
+Owner-applied only, never inferred; always placed last; not counted toward the
+1–3 limit.
+
+| Tag | Scope |
+|---|---|
+| `gifted` | Book given away: `hermeneutics, gifted`. Also set `total_count = 0, available = 0` |
+
 Cross-tag freely when a book truly straddles groups: Luther's Galatians
 lectures → `lutheran theology, biblical commentary`; *The Gospel According to
 Peanuts* → `christian living, comics & graphic novels`; 金融物理学 →
