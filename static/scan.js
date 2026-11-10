@@ -310,7 +310,7 @@ function setCollectionView(view) {
   viewListBtn.classList.toggle("active", view === "list");
   if (columnsBtn) columnsBtn.hidden = view !== "list"; // columns only apply to the table
   if (view !== "list" && columnPanel) columnPanel.hidden = true;
-  if (cachedBooks) renderCollection(cachedBooks);
+  applyCollectionFilter();
 }
 
 viewGridBtn.addEventListener("click", () => setCollectionView("grid"));
@@ -381,7 +381,7 @@ function buildColumnPanel(books) {
       const chosen = [...columnPanel.querySelectorAll("input:checked")].map((i) => i.value);
       visibleColumns = chosen.length ? chosen : DEFAULT_COLUMNS.slice();
       localStorage.setItem("collectionColumns", JSON.stringify(visibleColumns));
-      if (cachedBooks) renderCollection(cachedBooks);
+      applyCollectionFilter();
     }),
   );
 }
@@ -420,7 +420,7 @@ if (adminBtn && !adminOpen) {
       adminPassword = "";
       sessionStorage.removeItem("adminPassword");
       refreshAdminBtn();
-      if (cachedBooks) renderCollection(cachedBooks);
+      applyCollectionFilter();
       return;
     }
     const pw = window.prompt("Admin password:"); // collection view has no live camera
@@ -434,7 +434,7 @@ if (adminBtn && !adminOpen) {
       adminPassword = pw;
       sessionStorage.setItem("adminPassword", pw);
       refreshAdminBtn();
-      if (cachedBooks) renderCollection(cachedBooks);
+      applyCollectionFilter();
     } catch {
       window.alert("Admin password rejected.");
     }
@@ -641,7 +641,7 @@ function renderList(books) {
         sortColumn = c;
         sortDir = 1;
       }
-      renderCollection(cachedBooks); // re-render with the new sort
+      applyCollectionFilter(); // re-render with the new sort
     });
   });
   collectionBodyEl.querySelectorAll("tbody tr").forEach((row, i) => {
@@ -668,7 +668,7 @@ function cellHtml(book, col) {
 // --- Collection borrow/return action ---
 
 function closeCollectionAction() {
-  renderCollection(cachedBooks); // rebuilds cleanly; clears any active state
+  applyCollectionFilter(); // rebuilds cleanly; clears any active state
 }
 
 async function openCollectionAction(book, el, view) {
